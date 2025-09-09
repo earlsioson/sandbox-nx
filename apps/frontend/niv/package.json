@@ -1,0 +1,8 @@
+{
+  "name": "@sandbox-nx/frontend-niv",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "frontend-niv"
+  }
+}
