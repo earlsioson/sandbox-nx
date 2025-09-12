@@ -1,0 +1,245 @@
+# =============================================================================
+# 5. UX TO DOMAIN MAPPING (CORRECTED FLOW)
+# File: 05-ux-domain-mapping.d2
+# =============================================================================
+
+vars: {
+  d2-config: {
+    layout-engine: tala
+  }
+}
+
+direction: right
+
+# UX Layer (Presenters/Controllers)
+ux_layer: UX Layer (Controllers) {
+  PatientSearchController: PatientSearchController {
+    endpoints: "REST Endpoints:\n• GET /api/enrollments/search\n• GET /api/patients/search\n• GET /api/enrollments/facility/{id}"
+    
+    searchEnrollments: "+searchEnrollments(query: SearchEnrollmentsRequest): Promise<EnrollmentSearchResult[]>"
+    searchPatients: "+searchPatients(query: PatientSearchRequest): Promise<PatientSearchResult[]>"
+    getEnrollmentsByFacility: "+getEnrollmentsByFacility(facilityId: string, userRole: UserRole): Promise<FacilityEnrollmentView[]>"
+    
+    note: "HTTP entry point\nRequest/Response transformation only"
+  }
+
+  ProgramEnrollmentController: ProgramEnrollmentController {
+    endpoints: "REST Endpoints:\n• POST /api/enrollments\n• PUT /api/enrollments/{id}/qualify\n• PUT /api/enrollments/{id}/consent\n• PUT /api/enrollments/{id}/activate"
+    
+    createEnrollment: "+createEnrollment(request: CreateEnrollmentRequest): Promise<EnrollmentResponse>"
+    qualifyPatient: "+qualifyPatient(id: string, request: QualifyPatientRequest): Promise<QualificationResponse>"
+    processConsent: "+processConsent(id: string, request: ConsentRequest): Promise<ConsentResponse>"
+    activateProgram: "+activateProgram(id: string): Promise<ActivationResponse>"
+    
+    note: "Enrollment operations\nCommand handling entry point"
+  }
+
+  AuditTrailController: AuditTrailController {
+    endpoints: "REST Endpoints:\n• GET /api/audit/enrollment/{id}\n• POST /api/audit/report\n• GET /api/audit/documents/{enrollmentId}"
+    
+    getEnrollmentHistory: "+getEnrollmentHistory(enrollmentId: string, userRole: UserRole): Promise<AuditTrailView[]>"
+    generateAuditReport: "+generateAuditReport(request: AuditReportRequest): Promise<AuditReportResponse>"
+    getUploadedDocuments: "+getUploadedDocuments(enrollmentId: string): Promise<DocumentListView[]>"
+    
+    note: "Audit operations\nCompliance reporting"
+  }
+
+  NotificationController: NotificationController {
+    endpoints: "REST Endpoints:\n• GET /api/notifications/role/{role}\n• GET /api/notifications/summary\n• PUT /api/notifications/mark-read"
+    
+    getNotificationsByRole: "+getNotificationsByRole(role: UserRole): Promise<RoleNotificationView[]>"
+    getNotificationSummary: "+getNotificationSummary(userId: string): Promise<NotificationSummary>"
+    markAsRead: "+markAsRead(notificationIds: string[]): Promise<void>"
+    
+    note: "Notification queries\nRole-based views"
+  }
+
+  WebhookController: WebhookController {
+    endpoints: "Webhook Endpoints:\n• POST /api/webhooks/pcc/patient-updated\n• POST /api/webhooks/platform/patient-admitted"
+    
+    handlePCCPatientUpdate: "+handlePCCPatientUpdate(payload: PCCWebhookPayload): Promise<void>"
+    handlePatientAdmission: "+handlePatientAdmission(payload: AdmissionWebhookPayload): Promise<void>"
+    
+    note: "External event handling\nWebhook integrations"
+  }
+}
+
+# Application Layer (Orchestration Services)
+application_layer: Application Layer (Services) {
+  PatientSearchService: PatientSearchService {
+    # Query Orchestration Methods
+    searchEnrollments: "+searchEnrollments(query: SearchEnrollmentsQuery): Promise<EnrollmentSearchResult[]>"
+    searchPatients: "+searchPatients(query: SearchPatientsQuery): Promise<PatientSearchResult[]>"
+    getEnrollmentsByFacility: "+getEnrollmentsByFacility(query: FacilityEnrollmentsQuery): Promise<FacilityEnrollmentView[]>"
+    
+    separator1: "──────────────────────────────"
+    
+    # View Model Creation (No Business Logic)
+    createEnrollmentSearchResults: "-createEnrollmentSearchResults(enrollments: ProgramEnrollment[], userRole: UserRole): EnrollmentSearchResult[]"
+    applyRoleBasedFiltering: "-applyRoleBasedFiltering(results: SearchResult[], userRole: UserRole): SearchResult[]"
+    aggregateNotificationData: "-aggregateNotificationData(enrollments: ProgramEnrollment[]): NotificationSummary"
+    
+    note: "Query orchestration only\nView model transformation"
+  }
+
+  ProgramEnrollmentService: ProgramEnrollmentService {
+    # Command Orchestration Methods
+    createEnrollment: "+createEnrollment(command: CreateEnrollmentCommand): Promise<EnrollmentId>"
+    qualifyPatient: "+qualifyPatient(command: QualifyPatientCommand): Promise<void>"
+    processConsentResponse: "+processConsentResponse(command: ConsentResponseCommand): Promise<void>"
+    activateProgram: "+activateProgram(command: ActivateProgramCommand): Promise<void>"
+    
+    separator2: "──────────────────────────────"
+    
+    # Orchestration Logic (No Business Rules)
+    validateCommand: "-validateCommand(command: Command): ValidationResult"
+    publishDomainEvents: "-publishDomainEvents(events: DomainEvent[]): Promise<void>"
+    sendIntegrationEvents: "-sendIntegrationEvents(events: IntegrationEvent[]): Promise<void>"
+    
+    note: "Command orchestration only\nNo business logic here"
+  }
+
+  AuditTrailService: AuditTrailService {
+    # Audit Query Methods
+    getEnrollmentHistory: "+getEnrollmentHistory(query: EnrollmentHistoryQuery): Promise<AuditTrailView[]>"
+    generateAuditReport: "+generateAuditReport(command: GenerateAuditReportCommand): Promise<AuditReport>"
+    trackUserAction: "+trackUserAction(command: TrackActionCommand): Promise<void>"
+    
+    separator3: "──────────────────────────────"
+    
+    # Report Generation (Data Assembly)
+    assembleAuditData: "-assembleAuditData(criteria: AuditCriteria): AuditData"
+    createAuditDocument: "-createAuditDocument(auditData: AuditData): AuditDocument"
+    validateReportPermissions: "-validateReportPermissions(userId: UserId, scope: ReportScope): void"
+    
+    note: "Audit data orchestration\nCompliance reporting"
+  }
+
+  NotificationDisplayService: NotificationDisplayService {
+    # Notification Query Methods
+    getNotificationsByRole: "+getNotificationsByRole(query: RoleNotificationQuery): Promise<RoleNotificationView[]>"
+    getNotificationSummary: "+getNotificationSummary(query: NotificationSummaryQuery): Promise<NotificationSummary>"
+    markNotificationsAsRead: "+markNotificationsAsRead(command: MarkReadCommand): Promise<void>"
+    
+    separator4: "──────────────────────────────"
+    
+    # View Assembly (No Business Logic)
+    createRoleBasedView: "-createRoleBasedView(notifications: Notification[], role: UserRole): RoleNotificationView[]"
+    aggregateNotificationCounts: "-aggregateNotificationCounts(notifications: Notification[]): NotificationSummary"
+    filterByPermissions: "-filterByPermissions(notifications: Notification[], userRole: UserRole): Notification[]"
+    
+    note: "Notification view assembly\nRole-based presentation"
+  }
+}
+
+# Domain Layer (Pure Business Logic)
+domain_layer: Domain Layer (Business Logic) {
+  NIVProgramEnrollment: NIVProgramEnrollment {
+    # Rich Business Behavior
+    makeQualificationDecision: "+makeQualificationDecision(decision: QualificationDecision, assessedBy: UserId): void"
+    processConsentResponse: "+processConsentResponse(consentGiven: boolean, reason?: string): void"
+    assessAdditionalLabsRequired: "+assessAdditionalLabsRequired(reasoning: string, assessedBy: UserId): void"
+    scheduleDeviceFitting: "+scheduleDeviceFitting(fittingDate: Date): void"
+    activateProgram: "+activateProgram(): void"
+    
+    separator1: "──────────────────────────────"
+    
+    # Business State Queries
+    isQualified: "+isQualified(): boolean"
+    canActivate: "+canActivate(): boolean"
+    requiresAdditionalLabs: "+requiresAdditionalLabs(): boolean"
+    getProgress: "+getProgress(): EnrollmentProgress"
+    getNextRequiredAction: "+getNextRequiredAction(): RequiredAction"
+    
+    note: "NIV business logic\nWorkflow state management"
+  }
+
+  Patient: Patient {
+    # Patient Business Logic
+    isEligibleForNIV: "+isEligibleForNIV(criteria: NIVCriteria): boolean"
+    enrollInProgram: "+enrollInProgram(programType: ProgramType, specialist: ClinicalSpecialist): ProgramEnrollment"
+    validateMedicalRequirements: "+validateMedicalRequirements(programType: ProgramType): ValidationResult"
+    updateDemographics: "+updateDemographics(demographics: PatientDemographics): void"
+    
+    separator2: "──────────────────────────────"
+    
+    # Patient State Queries
+    isValidForEnrollment: "+isValidForProgramEnrollment(): boolean"
+    getFullName: "+getFullName(): string"
+    hasActiveEnrollments: "+hasActiveEnrollments(): boolean"
+    getMedicalHistory: "+getMedicalHistory(): MedicalHistory"
+    
+    note: "Patient business logic\nEligibility validation"
+  }
+
+  NIVEligibilityService: NIVEligibilityService {
+    # Complex Business Logic
+    assessEligibility: "+assessEligibility(patient: Patient, labResults: LabResult[], diagnosisCodes: DiagnosisCode[]): EligibilityAssessment"
+    generateClinicalReasoning: "+generateClinicalReasoning(assessment: EligibilityAssessment): string"
+    determineRequiredLabs: "+determineRequiredLabs(currentLabs: LabResult[]): LabRequirement[]"
+    
+    separator3: "──────────────────────────────"
+    
+    # Private Business Rules
+    checkRespiratoryConditions: "-checkRespiratoryConditions(diagnosisCodes: DiagnosisCode[]): boolean"
+    assessLabResults: "-assessLabResults(labResults: LabResult[]): boolean"
+    evaluateRiskFactors: "-evaluateRiskFactors(patient: Patient): RiskAssessment"
+    
+    note: "Complex eligibility rules\nClinical decision logic"
+  }
+
+  SpecialistAssignmentService: SpecialistAssignmentService {
+    # Assignment Business Logic
+    assignOptimalSpecialist: "+assignOptimalSpecialist(patient: Patient, programType: ProgramType, facilityId: FacilityId): ClinicalSpecialist"
+    balanceWorkload: "+balanceWorkload(specialists: ClinicalSpecialist[]): ClinicalSpecialist[]"
+    matchExpertise: "+matchExpertise(specialists: ClinicalSpecialist[], programType: ProgramType): ClinicalSpecialist[]"
+    
+    note: "Assignment optimization\nWorkload balancing logic"
+  }
+
+  # Value Objects (Immutable Business Concepts)
+  EnrollmentProgress: EnrollmentProgress {
+    getCompletionPercentage: "+getCompletionPercentage(): number"
+    getNextRequiredStep: "+getNextRequiredStep(): ProgressStep"
+    isComplete: "+isComplete(): boolean"
+    getEstimatedCompletion: "+getEstimatedCompletionDate(): Date"
+    
+    note: "Progress calculation\nBusiness-driven milestones"
+  }
+
+  NotificationSummary: NotificationSummary {
+    getCountForRole: "+getCountForRole(role: UserRole): number"
+    hasNotificationsForRole: "+hasNotificationsForRole(role: UserRole): boolean"
+    getTotalUnreadCount: "+getTotalUnreadCount(): number"
+    hasUrgentNotifications: "+hasUrgentNotifications(): boolean"
+    
+    note: "Notification aggregation\nRole-based business rules"
+  }
+}
+
+# Request/Response Flow (UX → Application → Domain)
+ux_layer.PatientSearchController -> application_layer.PatientSearchService: "delegates to"
+ux_layer.ProgramEnrollmentController -> application_layer.ProgramEnrollmentService: "delegates to"
+ux_layer.AuditTrailController -> application_layer.AuditTrailService: "delegates to"
+ux_layer.NotificationController -> application_layer.NotificationDisplayService: "delegates to"
+
+# Application Service → Domain Logic Flow
+application_layer.ProgramEnrollmentService -> domain_layer.NIVProgramEnrollment: "orchestrates business operations"
+application_layer.ProgramEnrollmentService -> domain_layer.Patient: "validates and enrolls"
+application_layer.ProgramEnrollmentService -> domain_layer.NIVEligibilityService: "uses for assessment"
+application_layer.ProgramEnrollmentService -> domain_layer.SpecialistAssignmentService: "uses for assignment"
+
+application_layer.PatientSearchService -> domain_layer.EnrollmentProgress: "calculates progress"
+application_layer.NotificationDisplayService -> domain_layer.NotificationSummary: "aggregates notifications"
+
+# UX Component Mapping to Domain Capabilities
+ux_layer.PatientSearchController: "onboardLanding.searchPatient\nonboardLanding.searchResults\ncreatePatient.searchPatient" -> domain_layer.Patient: "Patient search & validation"
+
+ux_layer.ProgramEnrollmentController: "createAdmission.confirm\nresidentDetailsV2.onBoardingProgress" -> domain_layer.NIVProgramEnrollment: "Enrollment workflow"
+
+ux_layer.AuditTrailController: "residentDetailsV2.header.viewHistory\nresidentDetailsV2.header.downloadAudit" -> domain_layer.NIVProgramEnrollment: "Audit trail access"
+
+ux_layer.NotificationController: "notifications columns\nrole-based notifications" -> domain_layer.NotificationSummary: "Notification aggregation"
+
+# Data Flow Direction (All Dependencies Point Inward)
+note_dependency_flow: "CRITICAL: All dependencies flow inward\nUX → Application → Domain\nDomain has ZERO external dependencies"

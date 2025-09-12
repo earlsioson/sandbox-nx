@@ -1,0 +1,300 @@
+# =============================================================================
+# 2. DOMAIN MODEL RELATIONSHIPS (CORRECTED DDD)
+# File: 02-domain-model.d2
+# =============================================================================
+
+vars: {
+  d2-config: {
+    layout-engine: tala
+  }
+}
+
+# Rich Domain Entities (Not Anemic)
+entities: Rich Domain Entities {
+  Patient: Patient {
+    shape: class
+
+    # Entity Identity
+    patientId: "+patientId: PatientId"
+
+    # Entity Properties  
+    demographics: "-demographics: PatientDemographics"
+    medicalRecord: "-medicalRecord: MedicalRecordNumber"
+    medicalHistory: "-medicalHistory: MedicalHistory"
+    facilityAssignment: "-facilityAssignment: FacilityId"
+
+    separator1: "──────────────────────────────"
+
+    # Rich Business Behavior (NOT Anemic)
+    getFullName: "+getFullName(): string"
+    isValidForEnrollment: "+isValidForProgramEnrollment(): boolean"
+    isEligibleForNIV: "+isEligibleForNIV(criteria: NIVCriteria): boolean"
+    updateDemographics: "+updateDemographics(demographics: PatientDemographics): void"
+    enrollInProgram: "+enrollInProgram(programType: ProgramType): ProgramEnrollment"
+    validateMedicalRequirements: "+validateMedicalRequirements(): ValidationResult"
+
+    note: "Rich Entity with Business Logic\nNOT just data holder"
+  }
+
+  ProgramEnrollment: ProgramEnrollment {
+    shape: class
+    label: "<<Aggregate Root>> ProgramEnrollment"
+
+    # Aggregate Root Identity
+    enrollmentId: "-enrollmentId: EnrollmentId"
+
+    # Aggregate State
+    patient: "-patient: Patient"
+    programType: "-programType: ProgramType"
+    enrollmentStatus: "-enrollmentStatus: EnrollmentStatus"
+    assignedSpecialist: "-assignedSpecialist: ClinicalSpecialist"
+    auditTrail: "-auditTrail: AuditTrailEntry[]"
+    documents: "-documents: DocumentMetadata[]"
+    domainEvents: "-domainEvents: DomainEvent[]"
+
+    separator2: "──────────────────────────────"
+
+    # Aggregate Business Operations
+    transitionStatus: "+transitionStatus(newStatus: EnrollmentStatusType, reason: string): void"
+    addAuditEntry: "+addAuditEntry(action: AuditAction, performedBy: UserId): void"
+    attachDocument: "+attachDocument(document: DocumentMetadata): void"
+    assignSpecialist: "+assignSpecialist(specialist: ClinicalSpecialist): void"
+    getProgress: "+getProgress(): EnrollmentProgress"
+    canTransitionTo: "+canTransitionTo(status: EnrollmentStatusType): boolean"
+    publishDomainEvent: "+publishDomainEvent(event: DomainEvent): void"
+    getUncommittedEvents: "+getUncommittedEvents(): DomainEvent[]"
+    markEventsAsCommitted: "+markEventsAsCommitted(): void"
+
+    # Aggregate Invariant Enforcement
+    validateStateTransition: "-validateStateTransition(newStatus: EnrollmentStatusType): void"
+    ensureConsistency: "-ensureConsistency(): void"
+
+    note: "Aggregate Root enforces\nconsistency boundary"
+  }
+
+  NIVProgramEnrollment: NIVProgramEnrollment {
+    shape: class
+    label: "<<Concrete Aggregate>> NIVProgramEnrollment"
+
+    # NIV-Specific State
+    qualificationAssessment: "-qualificationAssessment: NIVQualificationAssessment"
+    deviceConfiguration: "-deviceConfiguration: NIVDeviceConfiguration"
+    consentStatus: "-consentStatus: ConsentStatus"
+
+    separator3: "──────────────────────────────"
+
+    # NIV-Specific Business Logic
+    makeQualificationDecision: "+makeQualificationDecision(decision: QualificationDecision): void"
+    processConsentResponse: "+processConsentResponse(consentGiven: boolean, reason?: string): void"
+    assessAdditionalLabsRequired: "+assessAdditionalLabsRequired(reasoning: string, assessedBy: UserId): void"
+    scheduleDeviceFitting: "+scheduleDeviceFitting(fittingDate: Date): void"
+    activateProgram: "+activateProgram(): void"
+    isQualified: "+isQualified(): boolean"
+    requiresAdditionalLabs: "+requiresAdditionalLabs(): boolean"
+    canActivate: "+canActivate(): boolean"
+
+    note: "NIV-specific business rules\nand workflow logic"
+  }
+
+  AuditTrailEntry: AuditTrailEntry {
+    shape: class
+
+    # Entity Identity
+    entryId: "+entryId: AuditEntryId"
+
+    # Audit Properties
+    enrollmentId: "+enrollmentId: EnrollmentId"
+    action: "+action: AuditAction"
+    performedBy: "+performedBy: UserId"
+    timestamp: "+timestamp: Date"
+    details: "+details: AuditDetails"
+    previousValue: "+previousValue: any"
+    newValue: "+newValue: any"
+
+    separator4: "──────────────────────────────"
+
+    # Audit Business Logic
+    isStatusChange: "+isStatusChange(): boolean"
+    isUserAction: "+isUserAction(): boolean"
+    isSystemAction: "+isSystemAction(): boolean"
+    getChangeDescription: "+getChangeDescription(): string"
+
+    note: "Audit trail with\nbusiness context"
+  }
+}
+
+# Immutable Value Objects
+value_objects: Immutable Value Objects {
+  EnrollmentStatus: EnrollmentStatus {
+    shape: class
+    label: "<<Value Object>> EnrollmentStatus"
+
+    # Immutable Properties
+    status: "+readonly status: EnrollmentStatusType"
+    timestamp: "+readonly timestamp: Date"
+    reason: "+readonly reason: string"
+    modifiedBy: "+readonly modifiedBy: UserId"
+
+    separator1: "──────────────────────────────"
+
+    # Value Object Behavior
+    equals: "+equals(other: EnrollmentStatus): boolean"
+    isActive: "+isActive(): boolean"
+    canTransitionTo: "+canTransitionTo(newStatus: EnrollmentStatusType): boolean"
+    getTimeSinceUpdate: "+getTimeSinceUpdate(): Duration"
+
+    note: "Immutable status with\nbusiness validation"
+  }
+
+  EnrollmentProgress: EnrollmentProgress {
+    shape: class
+    label: "<<Value Object>> EnrollmentProgress"
+
+    # Progress Properties
+    completedSteps: "+readonly completedSteps: ProgressStep[]"
+    currentStep: "+readonly currentStep: ProgressStep"
+    totalSteps: "+readonly totalSteps: number"
+
+    separator2: "──────────────────────────────"
+
+    # Progress Calculations
+    getCompletionPercentage: "+getCompletionPercentage(): number"
+    getNextRequiredStep: "+getNextRequiredStep(): ProgressStep"
+    isComplete: "+isComplete(): boolean"
+    getEstimatedCompletionDate: "+getEstimatedCompletionDate(): Date"
+    equals: "+equals(other: EnrollmentProgress): boolean"
+
+    note: "Calculated progress\nwith business rules"
+  }
+
+  PatientDemographics: PatientDemographics {
+    shape: class
+    label: "<<Value Object>> PatientDemographics"
+
+    # Demographic Data
+    firstName: "+readonly firstName: string"
+    lastName: "+readonly lastName: string"
+    dateOfBirth: "+readonly dateOfBirth: Date"
+    gender: "+readonly gender: Gender"
+
+    separator3: "──────────────────────────────"
+
+    # Demographic Operations
+    getFullName: "+getFullName(): string"
+    getAge: "+getAge(): number"
+    isMinor: "+isMinor(): boolean"
+    equals: "+equals(other: PatientDemographics): boolean"
+
+    note: "Immutable demographics\nwith derived calculations"
+  }
+
+  NotificationSummary: NotificationSummary {
+    shape: class
+    label: "<<Value Object>> NotificationSummary"
+
+    # Notification Counts
+    totalCount: "+readonly totalCount: number"
+    unreadCount: "+readonly unreadCount: number"
+    urgentCount: "+readonly urgentCount: number"
+    roleCounts: "+readonly roleCounts: Map<UserRole, number>"
+
+    separator4: "──────────────────────────────"
+
+    # Notification Queries
+    getCountForRole: "+getCountForRole(role: UserRole): number"
+    hasNotificationsForRole: "+hasNotificationsForRole(role: UserRole): boolean"
+    getTotalUnreadCount: "+getTotalUnreadCount(): number"
+    hasUrgentNotifications: "+hasUrgentNotifications(): boolean"
+    equals: "+equals(other: NotificationSummary): boolean"
+
+    note: "Read-only notification\naggregation"
+  }
+}
+
+# Domain Services (Complex Business Logic)
+domain_services: Domain Services {
+  NIVEligibilityService: NIVEligibilityService {
+    shape: class
+
+    # Complex Business Logic
+    assessEligibility: "+assessEligibility(patient: Patient, labResults: LabResult[], diagnosisCodes: DiagnosisCode[]): EligibilityAssessment"
+    generateClinicalReasoning: "+generateClinicalReasoning(assessment: EligibilityAssessment): string"
+    determineRequiredLabs: "+determineRequiredLabs(currentLabs: LabResult[]): LabRequirement[]"
+
+    separator1: "──────────────────────────────"
+
+    # Private Business Rules
+    checkRespiratoryConditions: "-checkRespiratoryConditions(diagnosisCodes: DiagnosisCode[]): boolean"
+    assessLabResults: "-assessLabResults(labResults: LabResult[]): boolean"
+    evaluateRiskFactors: "-evaluateRiskFactors(patient: Patient): RiskAssessment"
+
+    note: "Complex eligibility logic\nNo external dependencies"
+  }
+
+  SpecialistAssignmentService: SpecialistAssignmentService {
+    shape: class
+
+    # Assignment Logic
+    assignOptimalSpecialist: "+assignOptimalSpecialist(patient: Patient, programType: ProgramType, facilityId: FacilityId): ClinicalSpecialist"
+    balanceWorkload: "+balanceWorkload(specialists: ClinicalSpecialist[]): ClinicalSpecialist[]"
+    matchExpertise: "+matchExpertise(specialists: ClinicalSpecialist[], programType: ProgramType): ClinicalSpecialist[]"
+
+    note: "Assignment business logic\nPure domain service"
+  }
+}
+
+# Domain Events (Business State Changes)
+domain_events: Domain Events {
+  EnrollmentInitiatedEvent: EnrollmentInitiatedEvent {
+    shape: class
+
+    enrollmentId: "+enrollmentId: EnrollmentId"
+    patientId: "+patientId: PatientId"
+    programType: "+programType: ProgramType"
+    occurredOn: "+occurredOn: Date"
+
+    note: "New enrollment started"
+  }
+
+  QualificationCompletedEvent: QualificationCompletedEvent {
+    shape: class
+
+    enrollmentId: "+enrollmentId: EnrollmentId"
+    isQualified: "+isQualified: boolean"
+    reasoning: "+reasoning: string"
+    assessedBy: "+assessedBy: UserId"
+    occurredOn: "+occurredOn: Date"
+
+    note: "Qualification assessment done"
+  }
+
+  PatientStatusChangedEvent: PatientStatusChangedEvent {
+    shape: class
+
+    enrollmentId: "+enrollmentId: EnrollmentId"
+    previousStatus: "+previousStatus: EnrollmentStatusType"
+    newStatus: "+newStatus: EnrollmentStatusType"
+    reason: "+reason: string"
+    changedBy: "+changedBy: UserId"
+    occurredOn: "+occurredOn: Date"
+
+    note: "Status transition occurred"
+  }
+}
+
+# Entity Relationships
+entities.Patient -> value_objects.PatientDemographics: "contains"
+entities.ProgramEnrollment -> entities.Patient: "aggregates"
+entities.ProgramEnrollment -> entities.AuditTrailEntry: "contains collection"
+entities.ProgramEnrollment -> value_objects.EnrollmentStatus: "has current"
+entities.ProgramEnrollment -> value_objects.EnrollmentProgress: "calculates"
+entities.NIVProgramEnrollment -> entities.ProgramEnrollment: "extends"
+
+# Domain Service Dependencies
+domain_services.NIVEligibilityService -> entities.Patient: "operates on"
+domain_services.SpecialistAssignmentService -> entities.ProgramEnrollment: "assigns to"
+
+# Domain Events Published By
+entities.ProgramEnrollment -> domain_events.EnrollmentInitiatedEvent: "publishes"
+entities.NIVProgramEnrollment -> domain_events.QualificationCompletedEvent: "publishes"
+entities.ProgramEnrollment -> domain_events.PatientStatusChangedEvent: "publishes"

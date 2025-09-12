@@ -1,0 +1,54 @@
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+  
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'nats'
+          scrape_interval: 5s
+          metrics_path: '/metrics'
+          static_configs:
+            - targets: ['nats-exporter:7777']
+
+processors:
+  batch:
+    send_batch_size: 10000
+    timeout: 10s
+  memory_limiter:
+    check_interval: 5s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+  resource:
+    attributes:
+      - action: insert
+        key: service.name
+        value: "nats-monitoring"
+
+exporters:
+  otlp/grpc:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  prometheus:
+    endpoint: otel-collector:8888
+    namespace: nats_monitoring
+    send_timestamps: true
+    metric_expiration: 180m
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 200
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [otlp/grpc]
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [memory_limiter, batch, resource]
+      exporters: [prometheus]

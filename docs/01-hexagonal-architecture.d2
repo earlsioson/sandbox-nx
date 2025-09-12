@@ -1,0 +1,155 @@
+# =============================================================================
+# 1. HEXAGONAL ARCHITECTURE OVERVIEW (CORRECTED)
+# File: 01-hexagonal-architecture.d2
+# =============================================================================
+
+vars: {
+  d2-config: {
+    layout-engine: tala
+  }
+}
+
+direction: down
+
+# External Systems
+external_systems: External Systems {
+  pointclickcare: PointClickCare API {
+    shape: cloud
+  }
+
+  platform_apps: Platform Apps {
+    shape: cloud
+  }
+
+  web_browser: Web Browser {
+    shape: person
+  }
+}
+
+# Hexagonal Architecture Layers (Corrected Dependency Direction)
+presenters: Presenters Layer\n(Primary Adapters) {
+  rest_controllers: REST Controllers {
+    PatientSearchController
+    AuditTrailController
+    NIVEnrollmentController
+    ProgramEnrollmentController
+
+    note: "Controllers depend on\nApplication Services only"
+  }
+
+  webhook_handlers: Webhook Handlers {
+    PCCWebhookHandler
+    PlatformEventHandler
+
+    note: "Handlers trigger\nApplication Services"
+  }
+}
+
+application: Application Layer\n(Ports & Services) {
+  services: Application Services {
+    ProgramEnrollmentService
+    PatientSearchService
+    EnrollmentProgressService
+    NotificationDisplayService
+    AuditTrailService
+
+    note: "Orchestrate domain operations\nthrough port interfaces"
+  }
+
+  ports: Port Interfaces {
+    PatientRepositoryPort
+    PCCIntegrationPort
+    NotificationPort
+    AuditTrailPort
+    DocumentStoragePort
+
+    note: "Abstract contracts\nNo implementation details"
+  }
+}
+
+domain: Domain Layer\n(Pure Business Logic) {
+  aggregates: Domain Aggregates {
+    ProgramEnrollmentAggregate: {
+      NIVProgramEnrollment
+      AuditTrailEntry
+      DocumentMetadata
+
+      note: "Consistency boundary\nRich business behavior"
+    }
+
+    PatientAggregate: {
+      Patient
+      MedicalHistory
+
+      note: "Patient lifecycle\nBusiness validation"
+    }
+  }
+
+  domain_services: Domain Services {
+    NIVEligibilityService
+    SpecialistAssignmentService
+
+    note: "Complex business logic\nNo external dependencies"
+  }
+
+  value_objects: Value Objects {
+    EnrollmentStatus
+    EnrollmentProgress
+    PatientDemographics
+    NotificationSummary
+
+    note: "Immutable\nEquality-based"
+  }
+
+  domain_events: Domain Events {
+    EnrollmentInitiatedEvent
+    QualificationCompletedEvent
+    PatientStatusChangedEvent
+
+    note: "Business state changes\nLoose coupling"
+  }
+}
+
+infrastructure: Infrastructure Layer\n(Secondary Adapters) {
+  repositories: Repository Implementations {
+    PostgreSQLProgramEnrollmentRepository
+    PostgreSQLAuditTrailRepository
+    S3DocumentRepository
+
+    note: "Implement port interfaces\nPersistence adapters"
+  }
+
+  integrations: External Integrations {
+    PointClickCareAPIClient
+    EmailNotificationService
+    SMSNotificationService
+
+    note: "Implement port interfaces\nExternal system adapters"
+  }
+
+  event_handlers: Event Handlers {
+    NotificationEventHandler
+    AuditEventHandler
+    IntegrationEventHandler
+
+    note: "React to domain events\nSide effects"
+  }
+}
+
+# Dependency Direction (ALL POINTING INWARD)
+external_systems.web_browser -> presenters.rest_controllers: "HTTP Requests"
+external_systems.platform_apps -> presenters.webhook_handlers: "Webhook Events"
+external_systems.pointclickcare -> presenters.webhook_handlers: "PCC Webhooks"
+
+presenters -> application.services: "Calls Application Services"
+application.services -> domain.aggregates: "Executes Business Logic"
+application.services -> domain.domain_services: "Uses Domain Services"
+domain.aggregates -> domain.domain_events: "Publishes Domain Events"
+
+# Infrastructure implements Application Ports (Dependency Inversion)
+infrastructure.repositories -> application.ports: "Implements Repository Ports"
+infrastructure.integrations -> application.ports: "Implements Integration Ports"
+infrastructure.event_handlers -> domain.domain_events: "Subscribes to Domain Events"
+
+# Application Services use Ports (not concrete implementations)
+application.services -> application.ports: "Depends on Abstractions"

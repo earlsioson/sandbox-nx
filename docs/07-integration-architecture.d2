@@ -1,0 +1,227 @@
+# =============================================================================
+# 7. INTEGRATION ARCHITECTURE (CORRECTED PATTERNS)
+# File: 07-integration-architecture.d2
+# =============================================================================
+
+vars: {
+  d2-config: {
+    layout-engine: tala
+  }
+}
+
+# External Systems Ecosystem
+external_ecosystem: External Systems Ecosystem {
+  pointclickcare_platform: PointClickCare Platform {
+    shape: cloud
+
+    pcc_api: PCC API Gateway {
+      endpoints: "Available Endpoints:\n• GET /patients/{id}\n• GET /patients/{id}/labs\n• GET /patients/{id}/diagnoses\n• POST /webhooks/subscribe"
+
+      note: "EHR system integration\nPatient clinical data source"
+    }
+
+    pcc_webhooks: PCC Webhooks {
+      events: "Webhook Events:\n• patient.updated\n• lab.results.available\n• diagnosis.updated\n• admission.created"
+
+      note: "Real-time event notifications\nImmediate clinical updates"
+    }
+  }
+
+  nursing_home_platform: Nursing Home Platform Ecosystem {
+    shape: cloud
+
+    existing_apps: Existing Applications {
+      reporting_compliance: "Reporting Compliance App\n• Facility compliance tracking\n• Regulatory reporting"
+      risk_legal: "Risk Legal Tool\n• Litigation management\n• Risk assessment"
+      transport_signage: "Transport & Signage\n• Patient transport\n• Facility navigation"
+      axi_admit: "AXI Admit Application\n• Patient admissions\n• Initial assessments"
+
+      note: "70-80 nursing home facilities\nShared platform applications"
+    }
+
+    shared_platform_services: Shared Platform Services {
+      sso_service: "Single Sign-On\n• User authentication\n• Role management"
+      user_management: "User Management\n• User profiles\n• Permission systems"
+      platform_events: "Platform Event Bus\n• Cross-app communication\n• System-wide events"
+      audit_system: "Centralized Audit\n• Compliance logging\n• System-wide audit trail"
+
+      note: "Platform-wide shared services\nCross-application functionality"
+    }
+  }
+}
+
+# NIV Application Architecture
+niv_application: NIV Application (Hexagonal Architecture) {
+  # Presenters Layer (Primary Adapters)
+  api_gateway: NIV API Gateway {
+    authentication: "• JWT Token Validation\n• Role-based Authorization\n• Rate Limiting & Throttling"
+    routing: "• Request Routing\n• Response Formatting\n• Error Handling"
+
+    note: "Single entry point\nSecurity & routing layer"
+  }
+
+  presenters: Presenters Layer {
+    rest_controllers: "REST Controllers\n• PatientSearchController\n• ProgramEnrollmentController\n• AuditTrailController\n• NotificationController"
+
+    webhook_handlers: "Webhook Handlers\n• PCCWebhookHandler\n• PlatformEventHandler\n• AdmissionEventHandler"
+
+    note: "Primary adapters\nExternal interface layer"
+  }
+
+  # Application Layer (Orchestration)
+  application_services: Application Services {
+    enrollment_orchestration: "Enrollment Services\n• ProgramEnrollmentService\n• PatientSearchService\n• EnrollmentProgressService"
+
+    display_services: "Display Services\n• NotificationDisplayService\n• AuditTrailService\n• ReportingService"
+
+    note: "Application orchestration\nUse case coordination"
+  }
+
+  # Domain Layer (Business Logic)
+  domain_core: Domain Core {
+    aggregates: "Business Aggregates\n• NIVProgramEnrollment\n• Patient\n• AuditTrailEntry"
+
+    domain_services: "Domain Services\n• NIVEligibilityService\n• SpecialistAssignmentService"
+
+    domain_events: "Domain Events\n• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent"
+
+    note: "Pure business logic\nZero external dependencies"
+  }
+
+  # Infrastructure Layer (Secondary Adapters)
+  infrastructure: Infrastructure Layer {
+    repositories: "Repository Implementations\n• PostgreSQLProgramEnrollmentRepository\n• PostgreSQLPatientRepository\n• S3DocumentRepository"
+
+    external_adapters: "External System Adapters\n• PointClickCareAPIClient\n• EmailNotificationAdapter\n• SMSNotificationAdapter"
+
+    event_handlers: "Event Handlers\n• NotificationEventHandler\n• AuditEventHandler\n• IntegrationEventHandler"
+
+    note: "Infrastructure implementations\nExternal system integration"
+  }
+}
+
+# Event & Message Infrastructure
+messaging_infrastructure: Event & Message Infrastructure {
+  domain_event_bus: Domain Event Bus {
+    shape: hexagon
+
+    internal_events: "Internal Domain Events:\n• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent\n• DocumentUploadedEvent"
+
+    event_handlers: "Registered Handlers:\n• NotificationEventHandler\n• AuditEventHandler\n• IntegrationEventHandler"
+
+    note: "In-process event bus\nDomain event distribution"
+  }
+
+  integration_event_bus: Integration Event Bus {
+    shape: hexagon
+
+    cross_app_events: "Cross-Application Events:\n• PatientEnrolledInNIVEvent\n• NIVQualificationCompletedEvent\n• ComplianceAuditRequiredEvent"
+
+    platform_integration: "Platform Integration:\n• Event transformation\n• Message routing\n• Delivery guarantees"
+
+    note: "Platform-wide event bus\nCross-application communication"
+  }
+
+  message_queues: Asynchronous Processing {
+    notification_queue: "Notification Queue\n• Email notifications\n• SMS notifications\n• Push notifications"
+
+    audit_processing: "Audit Processing Queue\n• Compliance logging\n• Audit report generation\n• Document archival"
+
+    integration_processing: "Integration Queue\n• PCC data synchronization\n• Platform event publishing\n• Webhook processing"
+
+    note: "Reliable message processing\nAsynchronous operation handling"
+  }
+}
+
+# Data & Document Storage
+persistence_layer: Data & Document Storage {
+  niv_database: NIV Database {
+    shape: cylinder
+
+    core_data: "Core Tables:\n• program_enrollments\n• patients\n• clinical_specialists\n• audit_trail_entries"
+
+    operational_data: "Operational Tables:\n• notifications\n• user_preferences\n• document_metadata\n• system_configuration"
+
+    note: "Transactional data storage\nACID compliance"
+  }
+
+  document_storage: Document Storage {
+    shape: cylinder
+
+    medical_documents: "Medical Documents:\n• Patient consent forms\n• Clinical assessments\n• Lab results\n• Device configuration docs"
+
+    system_documents: "System Documents:\n• Audit reports\n• Compliance reports\n• Configuration backups\n• Log archives"
+
+    note: "Secure document storage\nHIPAA compliant"
+  }
+
+  cache_layer: Caching Layer {
+    shape: hexagon
+
+    application_cache: "Application Cache:\n• Frequently accessed patients\n• User session data\n• Notification summaries"
+
+    integration_cache: "Integration Cache:\n• PCC API responses\n• Platform user data\n• Configuration settings"
+
+    note: "Performance optimization\nReduced external calls"
+  }
+}
+
+# Integration Patterns & Data Flows
+
+# Primary Integration Flows (Inbound)
+external_ecosystem.pointclickcare_platform.pcc_webhooks -> niv_application.presenters: "Real-time clinical updates"
+external_ecosystem.nursing_home_platform.existing_apps -> niv_application.presenters: "Cross-app patient events"
+external_ecosystem.nursing_home_platform.shared_platform_services.platform_events -> niv_application.presenters: "Platform-wide events"
+
+# API Gateway Processing
+niv_application.api_gateway -> niv_application.presenters: "Authenticated requests"
+niv_application.presenters -> niv_application.application_services: "Orchestrate use cases"
+
+# Domain Processing
+niv_application.application_services -> niv_application.domain_core: "Execute business logic"
+niv_application.domain_core -> messaging_infrastructure.domain_event_bus: "Publish domain events"
+
+# Infrastructure Processing
+niv_application.application_services -> niv_application.infrastructure: "Persist data & integrate"
+niv_application.infrastructure -> persistence_layer.niv_database: "Data operations"
+niv_application.infrastructure -> persistence_layer.document_storage: "Document operations"
+
+# Event Processing Flows
+messaging_infrastructure.domain_event_bus -> niv_application.infrastructure.event_handlers: "Handle domain events"
+niv_application.infrastructure.event_handlers -> messaging_infrastructure.message_queues: "Queue async operations"
+niv_application.infrastructure.event_handlers -> messaging_infrastructure.integration_event_bus: "Publish integration events"
+
+# External Integration Flows (Outbound)
+niv_application.infrastructure.external_adapters -> external_ecosystem.pointclickcare_platform.pcc_api: "Fetch clinical data"
+messaging_infrastructure.integration_event_bus -> external_ecosystem.nursing_home_platform.shared_platform_services.platform_events: "Cross-app notifications"
+niv_application.infrastructure.external_adapters -> external_ecosystem.nursing_home_platform.shared_platform_services.sso_service: "User authentication"
+
+# Caching Optimization
+niv_application.infrastructure.external_adapters -> persistence_layer.cache_layer: "Cache external data"
+niv_application.application_services -> persistence_layer.cache_layer: "Cache application data"
+
+# Integration Patterns Legend
+integration_patterns: Integration Patterns {
+  synchronous_api: "Synchronous API Calls\n• Direct request-response\n• Immediate data needs\n• User-initiated actions"
+
+  asynchronous_events: "Asynchronous Events\n• Loose coupling\n• Eventually consistent\n• Business state changes"
+
+  webhook_integration: "Webhook Integration\n• Real-time notifications\n• External system events\n• Push-based updates"
+
+  message_queuing: "Message Queuing\n• Reliable processing\n• Retry mechanisms\n• Load leveling"
+
+  note: "Integration pattern types\nChoose based on requirements"
+}
+
+# Security & Compliance Layers
+security_compliance: Security & Compliance {
+  authentication: "Authentication Layer\n• JWT token validation\n• Multi-factor authentication\n• Session management"
+
+  authorization: "Authorization Layer\n• Role-based access control\n• Resource-level permissions\n• Audit logging"
+
+  data_encryption: "Data Encryption\n• Data at rest encryption\n• Data in transit encryption\n• Key management"
+
+  compliance_monitoring: "Compliance Monitoring\n• HIPAA compliance\n• Audit trail requirements\n• Data retention policies"
+
+  note: "Healthcare compliance\nSecurity at every layer"
+}

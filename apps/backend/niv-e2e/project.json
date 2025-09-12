@@ -1,0 +1,15 @@
+{
+  "name": "backend-niv-e2e",
+  "implicitDependencies": ["backend-niv"],
+  "targets": {
+    "e2e": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{projectRoot}/test-output/jest/coverage"],
+      "options": {
+        "jestConfig": "apps/backend/niv-e2e/jest.config.ts",
+        "passWithNoTests": true
+      },
+      "dependsOn": ["backend-niv:build", "backend-niv:serve"]
+    }
+  }
+}

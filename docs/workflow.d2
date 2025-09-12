@@ -1,0 +1,78 @@
+explanation: |md
+  # NIV Workflow
+| {
+  near: top-center
+}
+
+external: Patient Added to NIV Onbaording
+external -> new.setStatus
+new: {
+  setStatus: Status set to New
+  pccLookup: PCC Lookup - retrieve Patient Information, EHR data, diagnoses, labs, history etc
+  save: Store in NIV for Review
+  assignRt: Assign Respiratory Therapist RT
+  assignPatientToReviewQueue: Assign patient to RT review queue
+  notify: System Notification Triggered
+  notifyRt: RT notified
+  notifyFacilityNurse: Facility Nurse Notified
+  notifyFacilityAdmin: Facility Administrator Notified
+  notifyFacilityDon: Facility DON Notified
+  notifyFacilityUm: Facility unit manager Notified
+}
+
+watchlist: {
+  setStatus: Set patient to watchlist while waiting for review
+  rtReview: RT Reviews and determines of Patient qualifies for NIV based on current EMR, Labs and Diagnosis Codes
+  qualified: Qualified
+  qualified.shape: diamond
+  patientRefused: Does Patient Refuse
+  patientRefused.shape: diamond
+  addToQueueReReview: Add to queue to “Re-Review” (Reviewed) - Refused → Trigger review
+  labsRequired: Are additional labs required?
+  labsRequired.shape: diamond
+  orderLabs: Order Additional Labs, including Blood Gases if Missing
+}
+
+pending: {
+  setStatus: Set Status to Pending
+  fitPatient: Fit Patient for Device
+}
+
+active: {
+  setStatus: Set Status to Active
+  moveToPostTracking: Once Patient Fitted for Device move to Post Tracking
+}
+
+reviewed: {
+  setStatus: Set Status to Reviewed
+  closeReReview: Close and initiate “re-review after specified period of time.
+}
+
+changed: {
+  setStatus: Set Status to Changed
+}
+
+new.setStatus -> new.pccLookup -> new.save -> new.assignRt
+new.assignRt -> new.assignPatientToReviewQueue
+new.save -> new.notify
+new.notify -> new.notifyRt
+new.notify -> new.notifyFacilityNurse
+new.notify -> new.notifyFacilityAdmin
+new.notify -> new.notifyFacilityDon
+new.notify -> new.notifyFacilityUm
+
+new.assignPatientToReviewQueue -> watchlist.setStatus -> watchlist.rtReview -> watchlist.qualified
+watchlist.qualified -> watchlist.patientRefused: yes
+watchlist.patientRefused -> watchlist.addToQueueReReview: yes
+watchlist.patientRefused -> pending.setStatus: no
+pending.setStatus -> pending.fitPatient
+pending.fitPatient -> active.setStatus
+active.setStatus -> active.moveToPostTracking: Patient must be seen by RT Every 7 days During this time
+
+watchlist.qualified -> watchlist.labsRequired: no
+watchlist.labsRequired -> reviewed.setStatus: no
+reviewed.setStatus -> reviewed.closeReReview
+reviewed.closeReReview -> watchlist.labsRequired
+watchlist.labsRequired -> watchlist.orderLabs: yes
+watchlist.orderLabs -> changed.setStatus
+changed.setStatus -> watchlist.qualified
