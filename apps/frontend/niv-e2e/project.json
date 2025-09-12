@@ -1,0 +1,4 @@
+{
+  "implicitDependencies": ["frontend-niv"],
+  "name": "frontend-niv-e2e"
+}
