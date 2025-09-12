@@ -1,5 +1,5 @@
 # =============================================================================
-# 2. DOMAIN MODEL RELATIONSHIPS (CORRECTED DDD)
+# 2. DOMAIN MODEL RELATIONSHIPS
 # File: 02-domain-model.d2
 # =============================================================================
 
@@ -61,49 +61,40 @@ entities: Rich Domain Entities {
     assignSpecialist: "+assignSpecialist(specialist: ClinicalSpecialist): void"
     getProgress: "+getProgress(): EnrollmentProgress"
     canTransitionTo: "+canTransitionTo(status: EnrollmentStatusType): boolean"
-    publishDomainEvent: "+publishDomainEvent(event: DomainEvent): void"
-    getUncommittedEvents: "+getUncommittedEvents(): DomainEvent[]"
-    markEventsAsCommitted: "+markEventsAsCommitted(): void"
+    makeQualificationDecision: "+makeQualificationDecision(decision: QualificationDecision): void"
+    processConsentResponse: "+processConsentResponse(consent: ConsentResponse): void"
+    getDomainEvents: "+getDomainEvents(): DomainEvent[]"
+    clearDomainEvents: "+clearDomainEvents(): void"
 
-    # Aggregate Invariant Enforcement
-    validateStateTransition: "-validateStateTransition(newStatus: EnrollmentStatusType): void"
-    ensureConsistency: "-ensureConsistency(): void"
-
-    note: "Aggregate Root enforces\nconsistency boundary"
+    note: "Aggregate Root\nConsistency boundary"
   }
 
   NIVProgramEnrollment: NIVProgramEnrollment {
     shape: class
-    label: "<<Concrete Aggregate>> NIVProgramEnrollment"
+    label: "<<NIV Aggregate Root>> NIVProgramEnrollment"
 
-    # NIV-Specific State
+    # NIV-Specific Properties
     qualificationAssessment: "-qualificationAssessment: NIVQualificationAssessment"
     deviceConfiguration: "-deviceConfiguration: NIVDeviceConfiguration"
-    consentStatus: "-consentStatus: ConsentStatus"
 
-    separator3: "──────────────────────────────"
+    separator1: "──────────────────────────────"
 
-    # NIV-Specific Business Logic
-    makeQualificationDecision: "+makeQualificationDecision(decision: QualificationDecision): void"
-    processConsentResponse: "+processConsentResponse(consentGiven: boolean, reason?: string): void"
-    assessAdditionalLabsRequired: "+assessAdditionalLabsRequired(reasoning: string, assessedBy: UserId): void"
+    # NIV-Specific Business Operations
+    assessEligibility: "+assessEligibility(criteria: NIVCriteria): EligibilityAssessment"
     scheduleDeviceFitting: "+scheduleDeviceFitting(fittingDate: Date): void"
     activateProgram: "+activateProgram(): void"
-    isQualified: "+isQualified(): boolean"
-    requiresAdditionalLabs: "+requiresAdditionalLabs(): boolean"
-    canActivate: "+canActivate(): boolean"
+    orderAdditionalLabs: "+orderAdditionalLabs(requirements: LabRequirement[]): void"
+    disqualifyPatient: "+disqualifyPatient(reason: DisqualificationReason): void"
+    returnToAssessment: "+returnToAssessment(): void"
 
-    note: "NIV-specific business rules\nand workflow logic"
+    note: "NIV-specific aggregate\nExtends ProgramEnrollment"
   }
 
   AuditTrailEntry: AuditTrailEntry {
     shape: class
 
-    # Entity Identity
-    entryId: "+entryId: AuditEntryId"
-
     # Audit Properties
-    enrollmentId: "+enrollmentId: EnrollmentId"
+    id: "+id: AuditEntryId"
     action: "+action: AuditAction"
     performedBy: "+performedBy: UserId"
     timestamp: "+timestamp: Date"
@@ -111,37 +102,116 @@ entities: Rich Domain Entities {
     previousValue: "+previousValue: any"
     newValue: "+newValue: any"
 
-    separator4: "──────────────────────────────"
+    separator1: "──────────────────────────────"
 
-    # Audit Business Logic
-    isStatusChange: "+isStatusChange(): boolean"
-    isUserAction: "+isUserAction(): boolean"
-    isSystemAction: "+isSystemAction(): boolean"
-    getChangeDescription: "+getChangeDescription(): string"
+    # Audit Operations
+    isSignificantChange: "+isSignificantChange(): boolean"
+    getDescription: "+getDescription(): string"
+    toComplianceRecord: "+toComplianceRecord(): ComplianceAuditRecord"
 
-    note: "Audit trail with\nbusiness context"
+    note: "Entity within aggregate\nCompliance tracking"
+  }
+
+  ClinicalSpecialist: ClinicalSpecialist {
+    shape: class
+
+    # Specialist Identity
+    specialistId: "+specialistId: SpecialistId"
+    credentials: "+credentials: Credentials"
+    specializations: "+specializations: Specialization[]"
+    facilityAssignments: "+facilityAssignments: FacilityId[]"
+    workloadCapacity: "+workloadCapacity: WorkloadCapacity"
+
+    separator1: "──────────────────────────────"
+
+    # Specialist Business Behavior
+    isAvailableForAssignment: "+isAvailableForAssignment(): boolean"
+    hasExpertiseFor: "+hasExpertiseFor(programType: ProgramType): boolean"
+    getCurrentWorkload: "+getCurrentWorkload(): number"
+    canHandleAdditionalPatient: "+canHandleAdditionalPatient(): boolean"
+
+    note: "RT and other specialists\nWorkload management"
   }
 }
 
-# Immutable Value Objects
-value_objects: Immutable Value Objects {
+# Domain Factories (Enhanced - Encapsulate Complex Creation)
+factories: Domain Factories {
+  NIVProgramEnrollmentFactory: NIVProgramEnrollmentFactory {
+    shape: class
+
+    # Dependencies
+    dependencies: "Dependencies:\n• NIVEligibilityService\n• SpecialistAssignmentService\n• AuditTrailService"
+
+    separator1: "──────────────────────────────"
+
+    # Factory Methods for Different Creation Scenarios
+    createFromPatientAdmission: "+createFromPatientAdmission(patient: Patient, admissionEvent: AdmissionEvent, facilityId: FacilityId): NIVProgramEnrollment"
+    createFromManualAssessment: "+createFromManualAssessment(patient: Patient, requestingRT: ClinicalSpecialist, facilityId: FacilityId): NIVProgramEnrollment"
+    createFromPlatformEvent: "+createFromPlatformEvent(patientId: PatientId, platformEvent: PlatformAdmissionEvent): NIVProgramEnrollment"
+    createFromEHRTrigger: "+createFromEHRTrigger(patientId: PatientId, ehrEvent: EHREvent): NIVProgramEnrollment"
+
+    separator2: "──────────────────────────────"
+
+    # Private Creation Logic
+    validatePatientForNIV: "-validatePatientForNIV(patient: Patient): void"
+    assignOptimalSpecialist: "-assignOptimalSpecialist(patient: Patient, facilityId: FacilityId): ClinicalSpecialist"
+    initializeAuditTrail: "-initializeAuditTrail(createdBy: UserId, source: CreationSource): AuditTrailEntry"
+    setupInitialNotifications: "-setupInitialNotifications(enrollment: NIVProgramEnrollment): void"
+
+    note: "Encapsulates complex creation logic\nHandles multiple creation scenarios\nEnsures proper initialization"
+  }
+
+  PatientFactory: PatientFactory {
+    shape: class
+
+    # Patient Creation Methods
+    createFromEHRData: "+createFromEHRData(ehrData: EHRPatientData): Patient"
+    createFromAdmissionData: "+createFromAdmissionData(admissionData: AdmissionData): Patient"
+    createFromManualEntry: "+createFromManualEntry(patientData: PatientRegistrationData): Patient"
+
+    # Private Validation
+    validatePatientData: "-validatePatientData(data: any): ValidationResult"
+    enrichWithDefaults: "-enrichWithDefaults(patient: Patient): Patient"
+
+    note: "Patient creation and validation\nData enrichment and defaults"
+  }
+
+  QualificationAssessmentFactory: QualificationAssessmentFactory {
+    shape: class
+
+    # Assessment Creation
+    createInitialAssessment: "+createInitialAssessment(patient: Patient, ehrData: EHRData): NIVQualificationAssessment"
+    createFromReassessment: "+createFromReassessment(previousAssessment: NIVQualificationAssessment, newData: ClinicalData): NIVQualificationAssessment"
+
+    # Assessment Logic
+    gatherRequiredData: "-gatherRequiredData(patient: Patient): ClinicalDataSet"
+    validateAssessmentData: "-validateAssessmentData(data: ClinicalDataSet): void"
+
+    note: "Assessment creation and validation\nClinical data gathering"
+  }
+}
+
+# Value Objects (Immutable Business Concepts)
+value_objects: Value Objects {
   EnrollmentStatus: EnrollmentStatus {
     shape: class
     label: "<<Value Object>> EnrollmentStatus"
 
-    # Immutable Properties
-    status: "+readonly status: EnrollmentStatusType"
-    timestamp: "+readonly timestamp: Date"
+    # Status Properties
+    statusType: "+readonly statusType: EnrollmentStatusType"
+    transitionDate: "+readonly transitionDate: Date"
     reason: "+readonly reason: string"
-    modifiedBy: "+readonly modifiedBy: UserId"
+    validTransitions: "+readonly validTransitions: EnrollmentStatusType[]"
 
     separator1: "──────────────────────────────"
 
-    # Value Object Behavior
-    equals: "+equals(other: EnrollmentStatus): boolean"
-    isActive: "+isActive(): boolean"
+    # Status Operations
     canTransitionTo: "+canTransitionTo(newStatus: EnrollmentStatusType): boolean"
-    getTimeSinceUpdate: "+getTimeSinceUpdate(): Duration"
+    createTransition: "+createTransition(newStatus: EnrollmentStatusType, reason: string): EnrollmentStatus"
+    isActive: "+isActive(): boolean"
+    requiresAction: "+requiresAction(): boolean"
+    getDisplayText: "+getDisplayText(): string"
+    equals: "+equals(other: EnrollmentStatus): boolean"
 
     note: "Immutable status with\nbusiness validation"
   }
@@ -289,6 +359,13 @@ entities.ProgramEnrollment -> entities.AuditTrailEntry: "contains collection"
 entities.ProgramEnrollment -> value_objects.EnrollmentStatus: "has current"
 entities.ProgramEnrollment -> value_objects.EnrollmentProgress: "calculates"
 entities.NIVProgramEnrollment -> entities.ProgramEnrollment: "extends"
+
+# Factory Dependencies (Enhanced)
+factories.NIVProgramEnrollmentFactory -> entities.NIVProgramEnrollment: "creates"
+factories.NIVProgramEnrollmentFactory -> domain_services.NIVEligibilityService: "uses for validation"
+factories.NIVProgramEnrollmentFactory -> domain_services.SpecialistAssignmentService: "uses for assignment"
+factories.PatientFactory -> entities.Patient: "creates"
+factories.QualificationAssessmentFactory -> entities.NIVProgramEnrollment: "creates assessments for"
 
 # Domain Service Dependencies
 domain_services.NIVEligibilityService -> entities.Patient: "operates on"

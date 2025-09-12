@@ -1,5 +1,5 @@
 # =============================================================================
-# 7. INTEGRATION ARCHITECTURE (CORRECTED PATTERNS)
+# 7. INTEGRATION ARCHITECTURE
 # File: 07-integration-architecture.d2
 # =============================================================================
 
@@ -53,50 +53,130 @@ external_ecosystem: External Systems Ecosystem {
 # NIV Application Architecture
 niv_application: NIV Application (Hexagonal Architecture) {
   # Presenters Layer (Primary Adapters)
-  api_gateway: NIV API Gateway {
-    authentication: "• JWT Token Validation\n• Role-based Authorization\n• Rate Limiting & Throttling"
-    routing: "• Request Routing\n• Response Formatting\n• Error Handling"
-
-    note: "Single entry point\nSecurity & routing layer"
-  }
-
   presenters: Presenters Layer {
-    rest_controllers: "REST Controllers\n• PatientSearchController\n• ProgramEnrollmentController\n• AuditTrailController\n• NotificationController"
+    api_gateway: API Gateway {
+      authentication: "Authentication:\n• JWT token validation\n• Role-based access control\n• Request rate limiting"
 
-    webhook_handlers: "Webhook Handlers\n• PCCWebhookHandler\n• PlatformEventHandler\n• AdmissionEventHandler"
+      routing: "Routing:\n• REST endpoint mapping\n• Request validation\n• Response formatting"
 
-    note: "Primary adapters\nExternal interface layer"
+      note: "Entry point for all HTTP requests\nSecurity and routing layer"
+    }
+
+    rest_controllers: REST Controllers {
+      PatientSearchController: "• GET /api/patients/search\n• GET /api/enrollments/search\n• GET /api/enrollments/facility/{id}"
+      ProgramEnrollmentController: "• POST /api/enrollments\n• PUT /api/enrollments/{id}/qualify\n• PUT /api/enrollments/{id}/activate"
+      AuditTrailController: "• GET /api/audit/enrollment/{id}\n• POST /api/audit/report"
+
+      note: "HTTP endpoints\nRequest/Response transformation"
+    }
+
+    webhook_handlers: Webhook Handlers {
+      PCCWebhookHandler: "• Handle PCC patient updates\n• Process lab result notifications\n• Manage diagnosis changes"
+      PlatformEventHandler: "• Process cross-app events\n• Handle platform notifications\n• Coordinate shared workflows"
+
+      note: "Inbound event processing\nReal-time integration handling"
+    }
   }
 
   # Application Layer (Orchestration)
   application_services: Application Services {
-    enrollment_orchestration: "Enrollment Services\n• ProgramEnrollmentService\n• PatientSearchService\n• EnrollmentProgressService"
+    ProgramEnrollmentService: "• Create enrollments\n• Process qualifications\n• Manage state transitions"
+    PatientSearchService: "• Search patients and enrollments\n• Filter and sort results\n• Generate view models"
+    AuditTrailService: "• Track user actions\n• Generate compliance reports\n• Manage audit history"
+    NotificationDisplayService: "• Aggregate notifications\n• Format for display\n• Mark as read/unread"
 
-    display_services: "Display Services\n• NotificationDisplayService\n• AuditTrailService\n• ReportingService"
-
-    note: "Application orchestration\nUse case coordination"
+    note: "Orchestration layer\nNo business logic"
   }
 
-  # Domain Layer (Business Logic)
+  # Domain Core (Business Logic)
   domain_core: Domain Core {
-    aggregates: "Business Aggregates\n• NIVProgramEnrollment\n• Patient\n• AuditTrailEntry"
-
-    domain_services: "Domain Services\n• NIVEligibilityService\n• SpecialistAssignmentService"
-
-    domain_events: "Domain Events\n• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent"
+    aggregates: "• NIVProgramEnrollment (Aggregate Root)\n• Patient\n• ClinicalSpecialist"
+    domain_services: "• NIVEligibilityService\n• SpecialistAssignmentService"
+    value_objects: "• EnrollmentStatus\n• PatientDemographics\n• NotificationSummary"
+    domain_events: "• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent"
 
     note: "Pure business logic\nZero external dependencies"
   }
 
   # Infrastructure Layer (Secondary Adapters)
   infrastructure: Infrastructure Layer {
-    repositories: "Repository Implementations\n• PostgreSQLProgramEnrollmentRepository\n• PostgreSQLPatientRepository\n• S3DocumentRepository"
+    repositories: Repository Adapters {
+      PostgreSQLProgramEnrollmentRepository: "Implements ProgramEnrollmentRepositoryPort"
+      PostgreSQLPatientRepository: "Implements PatientRepositoryPort"
+      PostgreSQLAuditRepository: "Implements AuditTrailRepositoryPort"
 
-    external_adapters: "External System Adapters\n• PointClickCareAPIClient\n• EmailNotificationAdapter\n• SMSNotificationAdapter"
+      note: "Data persistence adapters\nImplement port interfaces"
+    }
 
-    event_handlers: "Event Handlers\n• NotificationEventHandler\n• AuditEventHandler\n• IntegrationEventHandler"
+    external_adapters: External System Adapters {
+      PointClickCareAPIClient: "Implements PCCIntegrationPort"
+      EmailNotificationService: "Implements NotificationPort"
+      S3DocumentStorageService: "Implements DocumentStoragePort"
 
-    note: "Infrastructure implementations\nExternal system integration"
+      note: "External system adapters\nImplement port interfaces"
+    }
+
+    event_handlers: Event Handlers {
+      NotificationEventHandler: "Handles domain events for notifications"
+      AuditEventHandler: "Handles domain events for audit trail"
+      IntegrationEventHandler: "Transforms and publishes integration events"
+
+      note: "Domain event subscribers\nSide effects and integrations"
+    }
+  }
+}
+
+# Enhanced Event Architecture (NEW - Clearer Event Type Distinctions)
+event_architecture: Event Architecture Layers {
+  # Internal Domain Events (Stay within NIV Application)
+  domain_events: Domain Events (Internal) {
+    shape: hexagon
+    style.fill: "#E3F2FD"
+
+    characteristics: "Characteristics:\n• Rich domain context\n• Internal to NIV application\n• Can evolve freely\n• Detailed business information\n• Never cross system boundaries"
+
+    examples: "Internal Domain Events:\n• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent\n• DeviceFittingScheduledEvent\n• DocumentUploadedEvent\n• ConsentResponseReceivedEvent"
+
+    usage_rules: "Usage Rules:\n• Published by domain aggregates\n• Handled by NIV event handlers\n• Contain rich business context\n• Can change without external impact"
+
+    note: "Internal business events\nRich domain context"
+  }
+
+  # Event Transformation Layer (NEW - Explicit Transformation)
+  event_transformation: Event Transformation Layer {
+    shape: diamond
+    style.fill: "#FFF3E0"
+
+    transformation_service: Domain to Integration Event Mapper {
+      mapEnrollmentInitiated: "EnrollmentInitiatedEvent → PatientEnrolledInNIVProgram"
+      mapQualificationCompleted: "QualificationCompletedEvent → NIVQualificationStatusChanged"
+      mapStatusChanged: "PatientStatusChangedEvent → NIVQualificationStatusChanged"
+      mapProgramActivated: "ProgramActivatedEvent → PatientCareTransitionEvent"
+
+      note: "Transforms internal events to external events\nData format standardization"
+    }
+
+    transformation_rules: Transformation Rules {
+      data_mapping: "Data Mapping:\n• Domain IDs → Platform IDs\n• Rich objects → Simple primitives\n• Business context → Standard codes\n• Domain enums → Platform strings"
+
+      schema_versioning: "Schema Versioning:\n• Backward compatible changes\n• Version headers in events\n• Deprecation notices\n• Migration support"
+
+      note: "Rules for event transformation\nPlatform compatibility"
+    }
+  }
+
+  # External Integration Events (Cross System Boundaries)
+  integration_events: Integration Events (External) {
+    shape: hexagon
+    style.fill: "#E8F5E8"
+
+    characteristics: "Characteristics:\n• Minimal, stable schema\n• Cross-application boundaries\n• Versioned for compatibility\n• Platform-standardized format\n• Must remain backward compatible"
+
+    examples: "Integration Events:\n• PatientEnrolledInNIVProgram\n• NIVQualificationStatusChanged\n• ComplianceAuditRequired\n• PatientCareTransitionEvent\n• NIVProgramCompletedEvent\n• RiskProfileUpdatedEvent"
+
+    usage_rules: "Usage Rules:\n• Published to platform event bus\n• Consumed by other applications\n• Simple, stable data structure\n• Cannot break consuming applications"
+
+    note: "Cross-application events\nStable platform schema"
   }
 }
 
@@ -115,7 +195,7 @@ messaging_infrastructure: Event & Message Infrastructure {
   integration_event_bus: Integration Event Bus {
     shape: hexagon
 
-    cross_app_events: "Cross-Application Events:\n• PatientEnrolledInNIVEvent\n• NIVQualificationCompletedEvent\n• ComplianceAuditRequiredEvent"
+    cross_app_events: "Cross-Application Events:\n• PatientEnrolledInNIVProgram\n• NIVQualificationStatusChanged\n• ComplianceAuditRequiredEvent"
 
     platform_integration: "Platform Integration:\n• Event transformation\n• Message routing\n• Delivery guarantees"
 
@@ -179,7 +259,11 @@ niv_application.presenters -> niv_application.application_services: "Orchestrate
 
 # Domain Processing
 niv_application.application_services -> niv_application.domain_core: "Execute business logic"
-niv_application.domain_core -> messaging_infrastructure.domain_event_bus: "Publish domain events"
+niv_application.domain_core -> event_architecture.domain_events: "Publish internal domain events"
+
+# Event Transformation Flow (Enhanced)
+event_architecture.domain_events -> event_architecture.event_transformation: "Transform internal to external events"
+event_architecture.event_transformation -> event_architecture.integration_events: "Publish to platform event bus"
 
 # Infrastructure Processing
 niv_application.application_services -> niv_application.infrastructure: "Persist data & integrate"
@@ -189,11 +273,11 @@ niv_application.infrastructure -> persistence_layer.document_storage: "Document 
 # Event Processing Flows
 messaging_infrastructure.domain_event_bus -> niv_application.infrastructure.event_handlers: "Handle domain events"
 niv_application.infrastructure.event_handlers -> messaging_infrastructure.message_queues: "Queue async operations"
-niv_application.infrastructure.event_handlers -> messaging_infrastructure.integration_event_bus: "Publish integration events"
+niv_application.infrastructure.event_handlers -> event_architecture.event_transformation: "Transform domain events"
 
 # External Integration Flows (Outbound)
 niv_application.infrastructure.external_adapters -> external_ecosystem.pointclickcare_platform.pcc_api: "Fetch clinical data"
-messaging_infrastructure.integration_event_bus -> external_ecosystem.nursing_home_platform.shared_platform_services.platform_events: "Cross-app notifications"
+event_architecture.integration_events -> external_ecosystem.nursing_home_platform.shared_platform_services.platform_events: "Cross-app notifications"
 niv_application.infrastructure.external_adapters -> external_ecosystem.nursing_home_platform.shared_platform_services.sso_service: "User authentication"
 
 # Caching Optimization
@@ -209,6 +293,8 @@ integration_patterns: Integration Patterns {
   webhook_integration: "Webhook Integration\n• Real-time notifications\n• External system events\n• Push-based updates"
 
   message_queuing: "Message Queuing\n• Reliable processing\n• Retry mechanisms\n• Load leveling"
+
+  event_transformation: "Event Transformation\n• Domain to integration events\n• Schema standardization\n• Platform compatibility"
 
   note: "Integration pattern types\nChoose based on requirements"
 }
