@@ -3,23 +3,21 @@ import { AlarmSeverity } from '../../../../domain/value-objects/alarm-severity';
 import { AlarmEntity } from '../entities/alarm.entity';
 
 export class AlarmMapper {
-  static toDomain(alarmEntity: AlarmEntity): Alarm {
-    const alarmSeverity = new AlarmSeverity(
-      alarmEntity.severity as 'critical' | 'low' | 'medium' | 'high',
+  static toDomain(entity: AlarmEntity): Alarm {
+    return new Alarm(
+      entity.id,
+      entity.name,
+      new AlarmSeverity(entity.severity as AlarmSeverity['value']) // ✅ Create AlarmSeverity object
     );
-    const alarmModel = new Alarm(
-      alarmEntity.id,
-      alarmEntity.name,
-      alarmSeverity,
-    );
-    return alarmModel;
   }
 
-  static toPersistence(alarm: Alarm) {
+  static toPersistence(alarm: Alarm): AlarmEntity {
     const entity = new AlarmEntity();
+
     entity.id = alarm.id;
     entity.name = alarm.name;
-    entity.severity = alarm.severity.value;
+    entity.severity = alarm.severity; // ✅ Getter returns string
+
     return entity;
   }
 }
