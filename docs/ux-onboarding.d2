@@ -91,39 +91,185 @@ onboardingLoading: {
     viewHistory
     savePatient
   }
-  onBoardingProgress: {
+  onBoardingStatus: {
     grid-rows: 1
     initiatedOnboarding
-    ehrRecordSync
-    notificationsSent
+    ehrSync
+    notifications
     rtReview
     qualificationCheck
-    residentStatus
+    deviceFit
     *.shape: step
   }
   details: {
     grid-columns: 2
-    onBoardingProgress: {
+    onBoardingStatus: {
       tabs: {
         grid-rows: 1
+        ehrData
         notifications
         rtReview
-        qualCheck
-        qualDocuments
+        qualificationCheck
+        deviceFit
       }
-      qualityCheck: {
-        header: {
-          grid-rows: 1
-          diagnosis
-          evidence
-          dateRecorded
-          status
+      ehrData: {
+        EHR Sync in Progress
+      }
+    }
+    ehr: {
+      circularProgress
+    }
+  }
+}
+
+onboardingStep1: {
+  grid-rows: 3
+  header: {
+    grid-rows: 1
+    viewHistory
+    saveProgess
+  }
+  onBoardingStatus: {
+    grid-rows: 1
+    initiatedOnboarding
+    ehrSync
+    notifications
+    rtReview
+    qualificationCheck
+    deviceFit
+    *.shape: step
+  }
+  details: {
+    grid-columns: 2
+    onBoardingStatus: {
+      tabs: {
+        grid-rows: 1
+        ehrData
+        notifications
+        rtReview
+        qualificationCheck
+        deviceFit
+      }
+      ehrData: {
+        grid-rows: 1
+        diagnosis
+        status
+        evidence
+        dateRecorded
+        medicare
+      }
+    }
+    ehr: {
+      grid-rows: 3
+      patientName
+      details: {
+        dob
+        facility
+        patientId
+        gender
+        patientStatus
+        condition
+        medication
+        observation
+      }
+    }
+  }
+}
+onboardingStep2: {
+  grid-rows: 3
+  header: {
+    grid-rows: 1
+    viewHistory
+    saveProgess
+  }
+  onBoardingStatus: {
+    grid-rows: 1
+    initiatedOnboarding
+    ehrSync
+    notifications
+    rtReview
+    qualificationCheck
+    deviceFit
+    *.shape: step
+  }
+  details: {
+    grid-columns: 2
+    onBoardingStatus: {
+      tabs: {
+        grid-rows: 1
+        ehrData
+        notifications
+        rtReview
+        qualificationCheck
+        deviceFit
+      }
+      notifications: {
+        grid-rows: 1
+        notified
+        recipientName
+        email
+        emailStatus
+        status: {
+          actions
         }
       }
     }
     ehr: {
       grid-rows: 3
-      refreshEhr
+      patientName
+      details: {
+        dob
+        facility
+        patientId
+        gender
+        patientStatus
+        condition
+        medication
+        observation
+      }
+    }
+  }
+}
+onboardingStep3: {
+  grid-rows: 3
+  header: {
+    grid-rows: 1
+    viewHistory
+    saveProgess
+  }
+  onBoardingStatus: {
+    grid-rows: 1
+    initiatedOnboarding
+    ehrSync
+    notifications
+    rtReview
+    qualificationCheck
+    deviceFit
+    *.shape: step
+  }
+  details: {
+    grid-columns: 2
+    onBoardingStatus: {
+      tabs: {
+        grid-rows: 1
+        ehrData
+        notifications
+        rtReview
+        qualificationCheck
+        deviceFit
+      }
+      rtReview: {
+        grid-rows: 1
+        complianceStandard
+        ub04Section
+        sourceDocument
+        standardMet: {
+          initialHere
+        }
+      }
+    }
+    ehr: {
+      grid-rows: 3
       patientName
       details: {
         dob
