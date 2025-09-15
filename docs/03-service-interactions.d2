@@ -11,18 +11,18 @@ vars: {
 
 # Application Services (Orchestration Layer)
 application_services: Application Services {
-  ProgramEnrollmentService: ProgramEnrollmentService {
+  ProgramOnboardingService: ProgramOnboardingService {
     shape: class
 
     # Dependencies (Ports Only - No Concrete Implementations)
-    dependencies: "Dependencies (Injected Ports):\n• ProgramEnrollmentRepositoryPort\n• PCCIntegrationPort\n• NotificationPort\n• NIVEligibilityService (Domain)"
+    dependencies: "Dependencies (Injected Ports):\n• ProgramOnboardingRepositoryPort\n• PCCIntegrationPort\n• NotificationPort\n• NIVEligibilityService (Domain)"
 
     separator1: "──────────────────────────────"
 
     # Orchestration Methods
-    createEnrollment: "+createEnrollment(command: CreateEnrollmentCommand): Promise<void>"
+    createOnboarding: "+createOnboarding(command: CreateOnboardingCommand): Promise<void>"
     qualifyPatient: "+qualifyPatient(command: QualifyPatientCommand): Promise<void>"
-    updateEnrollmentStatus: "+updateEnrollmentStatus(command: UpdateStatusCommand): Promise<void>"
+    updateOnboardingStatus: "+updateOnboardingStatus(command: UpdateStatusCommand): Promise<void>"
     processConsentResponse: "+processConsentResponse(command: ConsentResponseCommand): Promise<void>"
     activateProgram: "+activateProgram(command: ActivateProgramCommand): Promise<void>"
 
@@ -39,20 +39,20 @@ application_services: Application Services {
     shape: class
 
     # Dependencies (Ports Only)
-    dependencies: "Dependencies (Injected Ports):\n• PatientRepositoryPort\n• ProgramEnrollmentRepositoryPort\n• NotificationRepositoryPort"
+    dependencies: "Dependencies (Injected Ports):\n• PatientRepositoryPort\n• ProgramOnboardingRepositoryPort\n• NotificationRepositoryPort"
 
     separator1: "──────────────────────────────"
 
     # Query Orchestration
-    searchEnrollments: "+searchEnrollments(query: SearchEnrollmentsQuery): Promise<EnrollmentSearchResult[]>"
+    searchOnboardings: "+searchOnboardings(query: SearchOnboardingsQuery): Promise<OnboardingSearchResult[]>"
     findExistingPatients: "+findExistingPatients(query: FindPatientsQuery): Promise<Patient[]>"
-    getEnrollmentsByFacility: "+getEnrollmentsByFacility(query: FacilityQuery): Promise<FacilityEnrollmentView[]>"
-    countEnrollmentsByStatus: "+countEnrollmentsByStatus(query: StatusCountQuery): Promise<StatusCountResult>"
+    getOnboardingsByFacility: "+getOnboardingsByFacility(query: FacilityQuery): Promise<FacilityOnboardingView[]>"
+    countOnboardingsByStatus: "+countOnboardingsByStatus(query: StatusCountQuery): Promise<StatusCountResult>"
 
     separator2: "──────────────────────────────"
 
     # View Model Creation
-    createSearchResultView: "-createSearchResultView(enrollments: Enrollment[], userRole: UserRole): EnrollmentSearchResult[]"
+    createSearchResultView: "-createSearchResultView(onboardings: Onboarding[], userRole: UserRole): OnboardingSearchResult[]"
     applyRoleBasedFiltering: "-applyRoleBasedFiltering(results: SearchResult[], userRole: UserRole): SearchResult[]"
 
     note: "Query orchestration only\nView model transformation"
@@ -67,7 +67,7 @@ application_services: Application Services {
     separator1: "──────────────────────────────"
 
     # Audit Operations
-    getEnrollmentHistory: "+getEnrollmentHistory(query: AuditHistoryQuery): Promise<AuditTrailView[]>"
+    getOnboardingHistory: "+getOnboardingHistory(query: AuditHistoryQuery): Promise<AuditTrailView[]>"
     generateAuditReport: "+generateAuditReport(command: GenerateAuditReportCommand): Promise<AuditReport>"
     trackUserAction: "+trackUserAction(command: TrackActionCommand): Promise<void>"
     getComplianceReport: "+getComplianceReport(query: ComplianceQuery): Promise<ComplianceReport>"
@@ -107,23 +107,23 @@ application_services: Application Services {
 
 # Port Interfaces (Abstract Contracts)
 repository_ports: Repository Ports {
-  ProgramEnrollmentRepositoryPort: ProgramEnrollmentRepositoryPort {
-    shape: interface
+  ProgramOnboardingRepositoryPort: ProgramOnboardingRepositoryPort {
+    shape: rectangle
 
     # Repository Contract (No Implementation)
-    save: "+save(enrollment: ProgramEnrollment): Promise<void>"
-    findById: "+findById(id: EnrollmentId): Promise<ProgramEnrollment>"
-    findByPatient: "+findByPatient(patientId: PatientId): Promise<ProgramEnrollment[]>"
-    findByFacility: "+findByFacility(facilityId: FacilityId): Promise<ProgramEnrollment[]>"
-    findByStatus: "+findByStatus(status: EnrollmentStatusType): Promise<ProgramEnrollment[]>"
-    findByCriteria: "+findByCriteria(criteria: EnrollmentSearchCriteria): Promise<ProgramEnrollment[]>"
-    countByStatus: "+countByStatus(): Promise<Map<EnrollmentStatusType, number>>"
+    save: "+save(onboarding: ProgramOnboarding): Promise<void>"
+    findById: "+findById(id: OnboardingId): Promise<ProgramOnboarding>"
+    findByPatient: "+findByPatient(patientId: PatientId): Promise<ProgramOnboarding[]>"
+    findByFacility: "+findByFacility(facilityId: FacilityId): Promise<ProgramOnboarding[]>"
+    findByStatus: "+findByStatus(status: OnboardingStatusType): Promise<ProgramOnboarding[]>"
+    findByCriteria: "+findByCriteria(criteria: OnboardingSearchCriteria): Promise<ProgramOnboarding[]>"
+    countByStatus: "+countByStatus(): Promise<Map<OnboardingStatusType, number>>"
 
     note: "Abstract repository contract\nNo persistence details"
   }
 
   PatientRepositoryPort: PatientRepositoryPort {
-    shape: interface
+    shape: rectangle
 
     # Patient Repository Contract
     save: "+save(patient: Patient): Promise<void>"
@@ -136,11 +136,11 @@ repository_ports: Repository Ports {
   }
 
   AuditTrailRepositoryPort: AuditTrailRepositoryPort {
-    shape: interface
+    shape: rectangle
 
     # Audit Repository Contract
     save: "+save(entry: AuditTrailEntry): Promise<void>"
-    findByEnrollment: "+findByEnrollment(enrollmentId: EnrollmentId): Promise<AuditTrailEntry[]>"
+    findByOnboarding: "+findByOnboarding(onboardingId: OnboardingId): Promise<AuditTrailEntry[]>"
     findByDateRange: "+findByDateRange(start: Date, end: Date): Promise<AuditTrailEntry[]>"
     findByUser: "+findByUser(userId: UserId): Promise<AuditTrailEntry[]>"
     findByAction: "+findByAction(action: AuditAction): Promise<AuditTrailEntry[]>"
@@ -151,7 +151,7 @@ repository_ports: Repository Ports {
 
 integration_ports: Integration Ports {
   PCCIntegrationPort: PCCIntegrationPort {
-    shape: interface
+    shape: rectangle
 
     # PCC Integration Contract
     getPatientData: "+getPatientData(patientId: PatientId): Promise<EHRData>"
@@ -164,26 +164,26 @@ integration_ports: Integration Ports {
   }
 
   NotificationPort: NotificationPort {
-    shape: interface
+    shape: rectangle
 
     # Notification Contract
     sendEmail: "+sendEmail(recipient: EmailAddress, message: EmailMessage): Promise<void>"
     sendSMS: "+sendSMS(recipient: PhoneNumber, message: SMSMessage): Promise<void>"
     sendPushNotification: "+sendPushNotification(userId: UserId, message: PushMessage): Promise<void>"
-    sendRoleBasedNotifications: "+sendRoleBasedNotifications(enrollment: ProgramEnrollment, eventType: NotificationEventType): Promise<void>"
+    sendRoleBasedNotifications: "+sendRoleBasedNotifications(onboarding: ProgramOnboarding, eventType: NotificationEventType): Promise<void>"
 
     note: "Abstract notification contract\nNo delivery implementation"
   }
 
   DocumentStoragePort: DocumentStoragePort {
-    shape: interface
+    shape: rectangle
 
     # Document Storage Contract
     store: "+store(document: Document): Promise<DocumentId>"
     retrieve: "+retrieve(documentId: DocumentId): Promise<Document>"
     generateDownloadUrl: "+generateDownloadUrl(documentId: DocumentId): Promise<string>"
     delete: "+delete(documentId: DocumentId): Promise<void>"
-    listByEnrollment: "+listByEnrollment(enrollmentId: EnrollmentId): Promise<DocumentMetadata[]>"
+    listByOnboarding: "+listByOnboarding(onboardingId: OnboardingId): Promise<DocumentMetadata[]>"
 
     note: "Abstract storage contract\nNo storage provider details"
   }
@@ -191,7 +191,7 @@ integration_ports: Integration Ports {
 
 # Command and Query Objects (CQRS-lite)
 commands_queries: Commands & Queries {
-  CreateEnrollmentCommand: CreateEnrollmentCommand {
+  CreateOnboardingCommand: CreateOnboardingCommand {
     shape: class
 
     patientId: "+patientId: PatientId"
@@ -202,11 +202,11 @@ commands_queries: Commands & Queries {
     note: "Command object\nValidation included"
   }
 
-  SearchEnrollmentsQuery: SearchEnrollmentsQuery {
+  SearchOnboardingsQuery: SearchOnboardingsQuery {
     shape: class
 
     facilityId: "+facilityId?: FacilityId"
-    status: "+status?: EnrollmentStatusType"
+    status: "+status?: OnboardingStatusType"
     assignedSpecialist: "+assignedSpecialist?: UserId"
     userRole: "+userRole: UserRole"
     pagination: "+pagination: PaginationInfo"
@@ -214,13 +214,13 @@ commands_queries: Commands & Queries {
     note: "Query object\nRole-based filtering"
   }
 
-  EnrollmentSearchResult: EnrollmentSearchResult {
+  OnboardingSearchResult: OnboardingSearchResult {
     shape: class
 
-    enrollmentId: "+enrollmentId: EnrollmentId"
+    onboardingId: "+onboardingId: OnboardingId"
     patientName: "+patientName: string"
-    status: "+status: EnrollmentStatusType"
-    progress: "+progress: EnrollmentProgress"
+    status: "+status: OnboardingStatusType"
+    progress: "+progress: OnboardingProgress"
     notifications: "+notifications: NotificationSummary"
     canEdit: "+canEdit: boolean"
     canView: "+canView: boolean"
@@ -254,13 +254,13 @@ domain_services: Domain Services {
 }
 
 # Dependencies (All pointing to abstractions)
-application_services.ProgramEnrollmentService -> repository_ports.ProgramEnrollmentRepositoryPort: "depends on"
-application_services.ProgramEnrollmentService -> integration_ports.PCCIntegrationPort: "depends on"
-application_services.ProgramEnrollmentService -> integration_ports.NotificationPort: "depends on"
-application_services.ProgramEnrollmentService -> domain_services.NIVEligibilityService: "uses"
+application_services.ProgramOnboardingService -> repository_ports.ProgramOnboardingRepositoryPort: "depends on"
+application_services.ProgramOnboardingService -> integration_ports.PCCIntegrationPort: "depends on"
+application_services.ProgramOnboardingService -> integration_ports.NotificationPort: "depends on"
+application_services.ProgramOnboardingService -> domain_services.NIVEligibilityService: "uses"
 
 application_services.PatientSearchService -> repository_ports.PatientRepositoryPort: "depends on"
-application_services.PatientSearchService -> repository_ports.ProgramEnrollmentRepositoryPort: "depends on"
+application_services.PatientSearchService -> repository_ports.ProgramOnboardingRepositoryPort: "depends on"
 
 application_services.AuditTrailService -> repository_ports.AuditTrailRepositoryPort: "depends on"
 application_services.AuditTrailService -> integration_ports.DocumentStoragePort: "depends on"
@@ -268,6 +268,6 @@ application_services.AuditTrailService -> integration_ports.DocumentStoragePort:
 application_services.NotificationDisplayService -> repository_ports.PatientRepositoryPort: "depends on"
 
 # Command/Query Flow
-commands_queries.CreateEnrollmentCommand -> application_services.ProgramEnrollmentService: "processed by"
-commands_queries.SearchEnrollmentsQuery -> application_services.PatientSearchService: "handled by"
-application_services.PatientSearchService -> commands_queries.EnrollmentSearchResult: "returns"
+commands_queries.CreateOnboardingCommand -> application_services.ProgramOnboardingService: "processed by"
+commands_queries.SearchOnboardingsQuery -> application_services.PatientSearchService: "handled by"
+application_services.PatientSearchService -> commands_queries.OnboardingSearchResult: "returns"

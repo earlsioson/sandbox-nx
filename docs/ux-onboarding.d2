@@ -1,8 +1,9 @@
 grid-rows: 1
 onboardLanding: {
   shape: page
-  grid-rows: 3
+  grid-rows: 4
   addOnboardingPatient
+  importPatients
   searchPatient: {
     filter: {
       facility
@@ -16,8 +17,8 @@ onboardLanding: {
     facility
     rtProgress: {
       grid-columns: 1
-      qualified
       status
+      qualified
       nextAction
     }
     notifications: {
@@ -35,6 +36,14 @@ onboardLanding: {
       delete
       edit
     }
+  }
+  pageResultNavigation: {
+    grid-rows: 1
+    first
+    previous
+    pageNumbers
+    next
+    last
   }
 }
 
@@ -56,7 +65,10 @@ createPatient: {
       width: 100
     }
     patientId: {
-      width: 300
+      width: 150
+    }
+    search: {
+      width: 150
     }
   }
   searchResults: {
@@ -72,66 +84,7 @@ createAdmission: {
   confirm
   cancel
 }
-residentDetails: {
-  grid-rows: 3
-  header: {
-    grid-rows: 1
-    viewFiles
-    downloadAudit
-  }
-  statusItems: {
-    grid-rows: 1
-    qualifyingDiagnosis
-    physicianOrders
-    ordersInputted
-    documentsUploaded
-  }
-  details: {
-    grid-columns: 2
-    onBoardingProgress: {
-      tabs: {
-        grid-rows: 1
-        notifications
-        qualifyingDiagnosis
-        rtStatus
-      }
-      rtStatus: {
-        header: {
-          grid-rows: 1
-          facility
-          reportQuarter
-          year
-        }
-        details: {
-          grid-columns: 2
-          rt
-          nurse
-          administrator
-          don
-          manager
-          daysInQuarterOnVent
-          daysOfActiveWearing/Q2
-          daysInPastWearing/Q
-        }
-      }
-    }
-    ehr: {
-      grid-rows: 3
-      viewVentData
-      primaryDiagnosis
-      details: {
-        dob
-        admitDateToVentProgram
-        admitSource
-        dischargeDateFromVentProgram
-        daysInQuarterOnVent
-        daysOfActiveWearing/Q2
-        daysInPastWearing/Q
-      }
-    }
-  }
-}
-residentDetailsV2: {
+onboardingLoading: {
   grid-rows: 3
   header: {
     grid-rows: 1
@@ -187,5 +140,4 @@ residentDetailsV2: {
 }
 
 onboardLanding.addOnboardingPatient -> createPatient
-createPatient.searchPatient.startOnboarding -> createAdmission
-createAdmission.confirm -> residentDetails
+createPatient.searchResults.startOnboarding -> createAdmission

@@ -1,0 +1,114 @@
+grid-rows: 1
+residentDetails: {
+  grid-rows: 3
+  header: {
+    grid-rows: 1
+    viewFiles
+    downloadAudit
+  }
+  statusItems: {
+    grid-rows: 1
+    qualifyingDiagnosis
+    physicianOrders
+    ordersInputted
+    documentsUploaded
+  }
+  details: {
+    grid-columns: 2
+    onBoardingProgress: {
+      tabs: {
+        grid-rows: 1
+        notifications
+        qualifyingDiagnosis
+        rtStatus
+      }
+      rtStatus: {
+        header: {
+          grid-rows: 1
+          facility
+          reportQuarter
+          year
+        }
+        details: {
+          grid-columns: 2
+          rt
+          nurse
+          administrator
+          don
+          manager
+          daysInQuarterOnVent
+          daysOfActiveWearing/Q2
+          daysInPastWearing/Q
+        }
+      }
+    }
+    ehr: {
+      grid-rows: 3
+      viewVentData
+      primaryDiagnosis
+      details: {
+        dob
+        admitDateToVentProgram
+        admitSource
+        dischargeDateFromVentProgram
+        daysInQuarterOnVent
+        daysOfActiveWearing/Q2
+        daysInPastWearing/Q
+      }
+    }
+  }
+}
+residentDetailsV2: {
+  grid-rows: 3
+  header: {
+    grid-rows: 1
+    viewHistory
+    savePatient
+  }
+  onBoardingProgress: {
+    grid-rows: 1
+    initiatedOnboarding
+    ehrRecordSync
+    notificationsSent
+    rtReview
+    qualificationCheck
+    residentStatus
+    *.shape: step
+  }
+  details: {
+    grid-columns: 2
+    onBoardingProgress: {
+      tabs: {
+        grid-rows: 1
+        notifications
+        rtReview
+        qualCheck
+        qualDocuments
+      }
+      qualityCheck: {
+        header: {
+          grid-rows: 1
+          diagnosis
+          evidence
+          dateRecorded
+          status
+        }
+      }
+    }
+    ehr: {
+      grid-rows: 3
+      refreshEhr
+      patientName
+      details: {
+        dob
+        facility
+        patientId
+        gender
+        patientStatus
+        condition
+        medication
+        observation
+      }
+    }
+  }
+}

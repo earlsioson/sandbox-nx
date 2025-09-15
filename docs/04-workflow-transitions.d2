@@ -17,7 +17,7 @@ external_trigger: Patient Added to NIV Onboarding {
 
   trigger_sources: "Trigger Sources:\n• AXI Admit Application\n• Manual RT Assessment\n• PCC Webhook Events\n• Platform Admission Events"
 
-  note: "External event initiates\nNIV enrollment process"
+  note: "External event initiates\nNIV onboarding process"
 }
 
 # Domain-Driven Status Workflow
@@ -25,20 +25,20 @@ NEW: NEW Status {
   shape: oval
   style.fill: "#E3F2FD"
 
-  domain_operations: "Domain Operations:\n• NIVProgramEnrollment.create()\n• Patient.validateForEnrollment()\n• SpecialistAssignmentService.assign()"
+  domain_operations: "Domain Operations:\n• NIVProgramOnboarding.create()\n• Patient.validateForOnboarding()\n• SpecialistAssignmentService.assign()"
 
-  activities: "Business Activities:\n• PCC Integration: Fetch patient EHR data\n• Domain Validation: Patient eligibility check\n• Specialist Assignment: Auto-assign optimal RT\n• Event Publishing: EnrollmentInitiatedEvent\n• Notification Dispatch: Stakeholder notifications"
+  activities: "Business Activities:\n• PCC Integration: Fetch patient EHR data\n• Domain Validation: Patient eligibility check\n• Specialist Assignment: Auto-assign optimal RT\n• Event Publishing: OnboardingInitiatedEvent\n• Notification Dispatch: Stakeholder notifications"
 
   invariants: "Domain Invariants:\n• Patient must have valid medical record\n• Facility assignment required\n• PCC integration must be available"
 
-  note: "Aggregate: NIVProgramEnrollment\nStatus: EnrollmentStatusType.NEW"
+  note: "Aggregate: NIVProgramOnboarding\nStatus: OnboardingStatusType.NEW"
 }
 
 WATCHLIST: WATCHLIST Status {
   shape: oval
   style.fill: "#FFF3E0"
 
-  domain_operations: "Domain Operations:\n• NIVEligibilityService.assessEligibility()\n• NIVProgramEnrollment.makeQualificationDecision()\n• EligibilityAssessment.create()"
+  domain_operations: "Domain Operations:\n• NIVEligibilityService.assessEligibility()\n• NIVProgramOnboarding.makeQualificationDecision()\n• EligibilityAssessment.create()"
 
   activities: "Business Activities:\n• RT Clinical Review: Manual assessment\n• Domain Service: Complex eligibility logic\n• Lab Analysis: Blood gas evaluation\n• Diagnosis Validation: ICD-10 code analysis\n• Clinical Reasoning: Generate assessment rationale"
 
@@ -63,7 +63,7 @@ consent_decision: Patient Consent Given? {
 
   business_rules: "Business Rules (Domain):\n• Patient must provide informed consent\n• Consent must be documented\n• Refusal triggers re-review scheduling"
 
-  domain_logic: "Domain Method:\nNIVProgramEnrollment.processConsentResponse()"
+  domain_logic: "Domain Method:\nNIVProgramOnboarding.processConsentResponse()"
 }
 
 labs_required: Additional Labs Required? {
@@ -79,9 +79,9 @@ PENDING: PENDING Status {
   shape: oval
   style.fill: "#E0F2F1"
 
-  domain_operations: "Domain Operations:\n• NIVProgramEnrollment.scheduleDeviceFitting()\n• DeviceConfiguration.create()\n• ConsentStatus.confirmed()"
+  domain_operations: "Domain Operations:\n• NIVProgramOnboarding.scheduleDeviceFitting()\n• DeviceConfiguration.create()\n• ConsentStatus.confirmed()"
 
-  activities: "Business Activities:\n• Device Fitting: Schedule and configure NIV device\n• Final Preparations: Complete enrollment requirements\n• Pre-Activation Checks: Validate readiness\n• Documentation: Ensure all forms completed"
+  activities: "Business Activities:\n• Device Fitting: Schedule and configure NIV device\n• Final Preparations: Complete onboarding requirements\n• Pre-Activation Checks: Validate readiness\n• Documentation: Ensure all forms completed"
 
   invariants: "Domain Invariants:\n• Patient consent confirmed\n• Device configuration completed\n• All required documents attached"
 
@@ -92,7 +92,7 @@ ACTIVE: ACTIVE Status {
   shape: oval
   style.fill: "#E8F5E8"
 
-  domain_operations: "Domain Operations:\n• NIVProgramEnrollment.activateProgram()\n• RTVisitSchedule.createInitial()\n• PostTrackingWorkflow.initiate()"
+  domain_operations: "Domain Operations:\n• NIVProgramOnboarding.activateProgram()\n• RTVisitSchedule.createInitial()\n• PostTrackingWorkflow.initiate()"
 
   activities: "Business Activities:\n• Program Activation: Patient officially on NIV\n• Post-Tracking: Ongoing monitoring initiated\n• RT Visit Schedule: 7-day visit cycle begins\n• Outcome Tracking: Monitor patient progress"
 
@@ -105,7 +105,7 @@ REVIEWED: REVIEWED Status {
   shape: oval
   style.fill: "#FFEBEE"
 
-  domain_operations: "Domain Operations:\n• NIVProgramEnrollment.scheduleReReview()\n• ReviewSchedule.create()\n• DisqualificationReason.record()"
+  domain_operations: "Domain Operations:\n• NIVProgramOnboarding.scheduleReReview()\n• ReviewSchedule.create()\n• DisqualificationReason.record()"
 
   activities: "Business Activities:\n• Documentation: Record disqualification reasoning\n• Re-Review Scheduling: Set future assessment date\n• Notification: Inform stakeholders of decision\n• Audit Trail: Complete decision documentation"
 
@@ -118,7 +118,7 @@ CHANGED: CHANGED Status {
   shape: oval
   style.fill: "#FFF3E0"
 
-  domain_operations: "Domain Operations:\n• LabOrder.create()\n• NIVProgramEnrollment.orderAdditionalLabs()\n• LabRequirement.generate()"
+  domain_operations: "Domain Operations:\n• LabOrder.create()\n• NIVProgramOnboarding.orderAdditionalLabs()\n• LabRequirement.generate()"
 
   activities: "Business Activities:\n• Lab Orders: Generate required lab requests\n• Blood Gas Orders: Schedule arterial blood gas\n• Status Tracking: Monitor lab completion\n• Re-Assessment: Return to qualification review"
 
@@ -129,7 +129,7 @@ CHANGED: CHANGED Status {
 
 # Domain Event Flows
 domain_events: Domain Events Published {
-  enrollment_initiated: "EnrollmentInitiatedEvent\n• Triggers stakeholder notifications\n• Initiates audit trail\n• Starts integration workflows"
+  onboarding_initiated: "OnboardingInitiatedEvent\n• Triggers stakeholder notifications\n• Initiates audit trail\n• Starts integration workflows"
 
   qualification_completed: "QualificationCompletedEvent\n• Records clinical decision\n• Updates patient status\n• Notifies care team"
 
@@ -144,7 +144,7 @@ domain_events: Domain Events Published {
 business_rules: Business Rules Engine {
   eligibility_rules: "NIVEligibilityService Rules:\n• Respiratory condition validation\n• Lab result analysis\n• Contraindication checking\n• Age appropriateness"
 
-  transition_rules: "State Transition Rules:\n• EnrollmentStatus.canTransitionTo()\n• Status change validation\n• Invariant enforcement\n• Event publishing"
+  transition_rules: "State Transition Rules:\n• OnboardingStatus.canTransitionTo()\n• Status change validation\n• Invariant enforcement\n• Event publishing"
 
   workflow_rules: "Workflow Business Rules:\n• RT assignment optimization\n• Notification targeting\n• Document requirements\n• Timeline enforcement"
 
@@ -152,9 +152,9 @@ business_rules: Business Rules Engine {
 }
 
 # Workflow Connections with Domain Operations
-external_trigger -> NEW: "Domain Factory:\nNIVProgramEnrollment.create()"
+external_trigger -> NEW: "Domain Factory:\nNIVProgramOnboarding.create()"
 
-NEW -> WATCHLIST: "Domain Method:\nNIVProgramEnrollment.transitionToWatchlist()\nEvent: EnrollmentInitiatedEvent"
+NEW -> WATCHLIST: "Domain Method:\nNIVProgramOnboarding.transitionToWatchlist()\nEvent: OnboardingInitiatedEvent"
 
 WATCHLIST -> qualified_decision: "Domain Service:\nNIVEligibilityService.assessEligibility()\nReturns: EligibilityAssessment"
 
@@ -162,19 +162,19 @@ qualified_decision -> consent_decision: "YES: EligibilityAssessment.isQualified 
 
 qualified_decision -> labs_required: "NO: EligibilityAssessment.isQualified = false\nBusiness Rule: Check if more data needed"
 
-consent_decision -> PENDING: "YES: Domain Method:\nNIVProgramEnrollment.processConsentResponse(true)\nEvent: ConsentConfirmedEvent"
+consent_decision -> PENDING: "YES: Domain Method:\nNIVProgramOnboarding.processConsentResponse(true)\nEvent: ConsentConfirmedEvent"
 
-consent_decision -> REVIEWED: "NO: Domain Method:\nNIVProgramEnrollment.processConsentResponse(false)\nReason: 'Patient refused consent'"
+consent_decision -> REVIEWED: "NO: Domain Method:\nNIVProgramOnboarding.processConsentResponse(false)\nReason: 'Patient refused consent'"
 
-labs_required -> REVIEWED: "NO: Domain Method:\nNIVProgramEnrollment.disqualifyPatient()\nReason: 'Not qualified - no additional testing'"
+labs_required -> REVIEWED: "NO: Domain Method:\nNIVProgramOnboarding.disqualifyPatient()\nReason: 'Not qualified - no additional testing'"
 
-labs_required -> CHANGED: "YES: Domain Method:\nNIVProgramEnrollment.orderAdditionalLabs()\nEvent: LabsOrderedEvent"
+labs_required -> CHANGED: "YES: Domain Method:\nNIVProgramOnboarding.orderAdditionalLabs()\nEvent: LabsOrderedEvent"
 
-PENDING -> ACTIVE: "Domain Method:\nNIVProgramEnrollment.activateProgram()\nBusiness Rule: Device fitting completed\nEvent: ProgramActivatedEvent"
+PENDING -> ACTIVE: "Domain Method:\nNIVProgramOnboarding.activateProgram()\nBusiness Rule: Device fitting completed\nEvent: ProgramActivatedEvent"
 
-CHANGED -> WATCHLIST: "Domain Method:\nNIVProgramEnrollment.returnToAssessment()\nTrigger: New lab results available\nEvent: LabResultsReceivedEvent"
+CHANGED -> WATCHLIST: "Domain Method:\nNIVProgramOnboarding.returnToAssessment()\nTrigger: New lab results available\nEvent: LabResultsReceivedEvent"
 
-REVIEWED -> WATCHLIST: "Domain Method:\nNIVProgramEnrollment.initiateReReview()\nTrigger: Scheduled re-review date reached\nEvent: ReReviewInitiatedEvent"
+REVIEWED -> WATCHLIST: "Domain Method:\nNIVProgramOnboarding.initiateReReview()\nTrigger: Scheduled re-review date reached\nEvent: ReReviewInitiatedEvent"
 
 # Domain Integration Points
 integration_points: Integration Points {
@@ -189,7 +189,7 @@ integration_points: Integration Points {
 
 # Aggregate Consistency Boundaries
 consistency_boundaries: Aggregate Consistency {
-  enrollment_aggregate: "NIVProgramEnrollment Aggregate:\n• All status transitions\n• Audit trail entries\n• Document attachments\n• Domain event publishing"
+  onboarding_aggregate: "NIVProgramOnboarding Aggregate:\n• All status transitions\n• Audit trail entries\n• Document attachments\n• Domain event publishing"
 
   transaction_boundary: "Transaction Boundaries:\n• Single aggregate per transaction\n• Eventual consistency between aggregates\n• Domain events for integration\n• Repository saves entire aggregate"
 
@@ -199,7 +199,7 @@ consistency_boundaries: Aggregate Consistency {
 }
 
 # Domain Event Connections
-NEW -> domain_events.enrollment_initiated: "publishes"
+NEW -> domain_events.onboarding_initiated: "publishes"
 qualified_decision -> domain_events.qualification_completed: "publishes"
 PENDING -> domain_events.status_changed: "publishes"
 ACTIVE -> domain_events.program_activated: "publishes"

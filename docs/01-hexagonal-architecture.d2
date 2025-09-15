@@ -1,5 +1,5 @@
 # =============================================================================
-# 1. HEXAGONAL ARCHITECTURE OVERVIEW (CORRECTED)
+# 1. HEXAGONAL ARCHITECTURE OVERVIEW
 # File: 01-hexagonal-architecture.d2
 # =============================================================================
 
@@ -31,8 +31,8 @@ presenters: Presenters Layer\n(Primary Adapters) {
   rest_controllers: REST Controllers {
     PatientSearchController
     AuditTrailController
-    NIVEnrollmentController
-    ProgramEnrollmentController
+    NIVOnboardingController
+    ProgramOnboardingController
 
     note: "Controllers depend on\nApplication Services only"
   }
@@ -47,9 +47,9 @@ presenters: Presenters Layer\n(Primary Adapters) {
 
 application: Application Layer\n(Ports & Services) {
   services: Application Services {
-    ProgramEnrollmentService
+    ProgramOnboardingService
     PatientSearchService
-    EnrollmentProgressService
+    OnboardingProgressService
     NotificationDisplayService
     AuditTrailService
 
@@ -69,8 +69,8 @@ application: Application Layer\n(Ports & Services) {
 
 domain: Domain Layer\n(Pure Business Logic) {
   aggregates: Domain Aggregates {
-    ProgramEnrollmentAggregate: {
-      NIVProgramEnrollment
+    ProgramOnboardingAggregate: {
+      NIVProgramOnboarding
       AuditTrailEntry
       DocumentMetadata
 
@@ -93,8 +93,8 @@ domain: Domain Layer\n(Pure Business Logic) {
   }
 
   value_objects: Value Objects {
-    EnrollmentStatus
-    EnrollmentProgress
+    OnboardingStatus
+    OnboardingProgress
     PatientDemographics
     NotificationSummary
 
@@ -102,7 +102,7 @@ domain: Domain Layer\n(Pure Business Logic) {
   }
 
   domain_events: Domain Events {
-    EnrollmentInitiatedEvent
+    OnboardingInitiatedEvent
     QualificationCompletedEvent
     PatientStatusChangedEvent
 
@@ -112,7 +112,7 @@ domain: Domain Layer\n(Pure Business Logic) {
 
 infrastructure: Infrastructure Layer\n(Secondary Adapters) {
   repositories: Repository Implementations {
-    PostgreSQLProgramEnrollmentRepository
+    PostgreSQLProgramOnboardingRepository
     PostgreSQLAuditTrailRepository
     S3DocumentRepository
 

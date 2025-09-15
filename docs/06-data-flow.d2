@@ -11,9 +11,9 @@ vars: {
 
 # Repository Adapters (Secondary Adapters - Implement Ports)
 repository_adapters: Repository Adapters {
-  PostgreSQLProgramEnrollmentRepository: PostgreSQLProgramEnrollmentRepository {
+  PostgreSQLProgramOnboardingRepository: PostgreSQLProgramOnboardingRepository {
     shape: class
-    label: "PostgreSQLProgramEnrollmentRepository\n<<implements ProgramEnrollmentRepositoryPort>>"
+    label: "PostgreSQLProgramOnboardingRepository\n<<implements ProgramOnboardingRepositoryPort>>"
 
     # Infrastructure Dependencies
     dependencies: "Infrastructure Dependencies:\n• TypeORM EntityManager\n• PostgreSQL Database\n• Connection Pool"
@@ -21,18 +21,18 @@ repository_adapters: Repository Adapters {
     separator1: "──────────────────────────────"
 
     # Port Implementation
-    save: "+save(enrollment: ProgramEnrollment): Promise<void>"
-    findById: "+findById(id: EnrollmentId): Promise<ProgramEnrollment>"
-    findByPatient: "+findByPatient(patientId: PatientId): Promise<ProgramEnrollment[]>"
-    findByFacility: "+findByFacility(facilityId: FacilityId): Promise<ProgramEnrollment[]>"
-    findByStatus: "+findByStatus(status: EnrollmentStatusType): Promise<ProgramEnrollment[]>"
-    findByCriteria: "+findByCriteria(criteria: EnrollmentSearchCriteria): Promise<ProgramEnrollment[]>"
+    save: "+save(onboarding: ProgramOnboarding): Promise<void>"
+    findById: "+findById(id: OnboardingId): Promise<ProgramOnboarding>"
+    findByPatient: "+findByPatient(patientId: PatientId): Promise<ProgramOnboarding[]>"
+    findByFacility: "+findByFacility(facilityId: FacilityId): Promise<ProgramOnboarding[]>"
+    findByStatus: "+findByStatus(status: OnboardingStatusType): Promise<ProgramOnboarding[]>"
+    findByCriteria: "+findByCriteria(criteria: OnboardingSearchCriteria): Promise<ProgramOnboarding[]>"
 
     separator2: "──────────────────────────────"
 
     # Private Translation Methods
-    toDomainModel: "-toDomainModel(entity: ProgramEnrollmentEntity): ProgramEnrollment"
-    toPersistenceModel: "-toPersistenceModel(enrollment: ProgramEnrollment): ProgramEnrollmentEntity"
+    toDomainModel: "-toDomainModel(entity: ProgramOnboardingEntity): ProgramOnboarding"
+    toPersistenceModel: "-toPersistenceModel(onboarding: ProgramOnboarding): ProgramOnboardingEntity"
     mapAuditTrail: "-mapAuditTrail(entries: AuditTrailEntity[]): AuditTrailEntry[]"
 
     note: "Implements repository port\nHandles domain ↔ persistence translation"
@@ -78,7 +78,7 @@ repository_adapters: Repository Adapters {
     retrieve: "+retrieve(documentId: DocumentId): Promise<Document>"
     generateDownloadUrl: "+generateDownloadUrl(documentId: DocumentId): Promise<string>"
     delete: "+delete(documentId: DocumentId): Promise<void>"
-    listByEnrollment: "+listByEnrollment(enrollmentId: EnrollmentId): Promise<DocumentMetadata[]>"
+    listByOnboarding: "+listByOnboarding(onboardingId: OnboardingId): Promise<DocumentMetadata[]>"
 
     separator2: "──────────────────────────────"
 
@@ -86,7 +86,7 @@ repository_adapters: Repository Adapters {
     uploadToS3: "-uploadToS3(key: string, content: Buffer): Promise<void>"
     generatePresignedUrl: "-generatePresignedUrl(key: string, expiration: number): string"
     deleteFromS3: "-deleteFromS3(key: string): Promise<void>"
-    buildDocumentKey: "-buildDocumentKey(enrollmentId: EnrollmentId, fileName: string): string"
+    buildDocumentKey: "-buildDocumentKey(onboardingId: OnboardingId, fileName: string): string"
 
     note: "S3 storage adapter\nDocument lifecycle management"
   }
@@ -132,7 +132,7 @@ integration_adapters: Integration Adapters {
 
     # Port Implementation (Partial)
     sendEmail: "+sendEmail(recipient: EmailAddress, message: EmailMessage): Promise<void>"
-    sendRoleBasedNotifications: "+sendRoleBasedNotifications(enrollment: ProgramEnrollment, eventType: NotificationEventType): Promise<void>"
+    sendRoleBasedNotifications: "+sendRoleBasedNotifications(onboarding: ProgramOnboarding, eventType: NotificationEventType): Promise<void>"
 
     separator2: "──────────────────────────────"
 
@@ -178,14 +178,14 @@ event_handlers: Event Handlers {
     separator1: "──────────────────────────────"
 
     # Event Handling
-    handleEnrollmentInitiated: "@EventHandler(EnrollmentInitiatedEvent)\n+handle(event: EnrollmentInitiatedEvent): Promise<void>"
+    handleOnboardingInitiated: "@EventHandler(OnboardingInitiatedEvent)\n+handle(event: OnboardingInitiatedEvent): Promise<void>"
     handleQualificationCompleted: "@EventHandler(QualificationCompletedEvent)\n+handle(event: QualificationCompletedEvent): Promise<void>"
     handleStatusChanged: "@EventHandler(PatientStatusChangedEvent)\n+handle(event: PatientStatusChangedEvent): Promise<void>"
 
     separator2: "──────────────────────────────"
 
     # Private Notification Logic
-    sendEnrollmentNotifications: "-sendEnrollmentNotifications(enrollment: ProgramEnrollment): Promise<void>"
+    sendOnboardingNotifications: "-sendOnboardingNotifications(onboarding: ProgramOnboarding): Promise<void>"
     determineNotificationRecipients: "-determineNotificationRecipients(event: DomainEvent): NotificationRecipient[]"
     createNotificationMessage: "-createNotificationMessage(event: DomainEvent, recipient: NotificationRecipient): NotificationMessage"
 
@@ -235,9 +235,9 @@ event_handlers: Event Handlers {
 
 # Database Entities (Persistence Models - NOT Domain Models)
 persistence_entities: Persistence Entities {
-  ProgramEnrollmentEntity: ProgramEnrollmentEntity {
+  ProgramOnboardingEntity: ProgramOnboardingEntity {
     shape: class
-    label: "<<Database Entity>> ProgramEnrollmentEntity"
+    label: "<<Database Entity>> ProgramOnboardingEntity"
 
     # Database Columns
     id: "+id: string"
@@ -281,7 +281,7 @@ external_systems: External Systems {
   PostgreSQLDatabase: PostgreSQL Database {
     shape: cylinder
 
-    schemas: "Schemas:\n• program_enrollments\n• patients\n• audit_trail\n• user_management"
+    schemas: "Schemas:\n• program_onboardings\n• patients\n• audit_trail\n• user_management"
 
     note: "Relational persistence\nACID compliance"
   }
@@ -304,17 +304,17 @@ external_systems: External Systems {
 }
 
 # Adapter Dependencies (Implement Ports)
-repository_adapters.PostgreSQLProgramEnrollmentRepository -> external_systems.PostgreSQLDatabase: "persists to"
+repository_adapters.PostgreSQLProgramOnboardingRepository -> external_systems.PostgreSQLDatabase: "persists to"
 repository_adapters.PostgreSQLPatientRepository -> external_systems.PostgreSQLDatabase: "persists to"
 repository_adapters.S3DocumentRepository -> external_systems.AmazonS3: "stores in"
 
 integration_adapters.PointClickCareAPIClient -> external_systems.PointClickCareAPI: "integrates with"
 
 # Repository Implementations use Persistence Entities
-repository_adapters.PostgreSQLProgramEnrollmentRepository -> persistence_entities.ProgramEnrollmentEntity: "maps to/from"
+repository_adapters.PostgreSQLProgramOnboardingRepository -> persistence_entities.ProgramOnboardingEntity: "maps to/from"
 repository_adapters.PostgreSQLPatientRepository -> persistence_entities.PatientEntity: "maps to/from"
 
 # Event Handlers Dependencies
 event_handlers.NotificationEventHandler -> integration_adapters.EmailNotificationAdapter: "uses"
 event_handlers.NotificationEventHandler -> integration_adapters.SMSNotificationAdapter: "uses"
-event_handlers.AuditEventHandler -> repository_adapters.PostgreSQLProgramEnrollmentRepository: "uses"
+event_handlers.AuditEventHandler -> repository_adapters.PostgreSQLProgramOnboardingRepository: "uses"

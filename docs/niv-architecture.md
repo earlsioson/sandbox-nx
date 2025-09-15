@@ -79,12 +79,12 @@ export class Patient {
   public enrollInProgram(
     programType: ProgramType,
     specialist: ClinicalSpecialist
-  ): ProgramEnrollment {
-    if (!this.isValidForProgramEnrollment()) {
-      throw new InvalidEnrollmentError(this.patientId);
+  ): ProgramOnboarding {
+    if (!this.isValidForProgramOnboarding()) {
+      throw new InvalidOnboardingError(this.patientId);
     }
 
-    return ProgramEnrollment.create(this, programType, specialist);
+    return ProgramOnboarding.create(this, programType, specialist);
   }
 
   public validateMedicalRequirements(
@@ -108,19 +108,19 @@ export class Patient {
 
   private validateDemographicUpdate(demographics: PatientDemographics): void {
     if (demographics.dateOfBirth > new Date()) {
-      throw new InvalidDemographicsError("Birth date cannot be in future");
+      throw new InvalidDemographicsError('Birth date cannot be in future');
     }
   }
 }
 ```
 
-#### NIVProgramEnrollment Aggregate Root
+#### NIVProgramOnboarding Aggregate Root
 
 ```typescript
-export class NIVProgramEnrollment {
-  private readonly enrollmentId: EnrollmentId;
+export class NIVProgramOnboarding {
+  private readonly onboardingId: OnboardingId;
   private patient: Patient;
-  private enrollmentStatus: EnrollmentStatus;
+  private onboardingStatus: OnboardingStatus;
   private qualificationAssessment: NIVQualificationAssessment;
   private assignedSpecialist: ClinicalSpecialist;
   private auditTrail: AuditTrailEntry[];
@@ -128,21 +128,21 @@ export class NIVProgramEnrollment {
   private domainEvents: DomainEvent[];
 
   constructor(
-    enrollmentId: EnrollmentId,
+    onboardingId: OnboardingId,
     patient: Patient,
     assignedSpecialist: ClinicalSpecialist
   ) {
-    this.enrollmentId = enrollmentId;
+    this.onboardingId = onboardingId;
     this.patient = patient;
     this.assignedSpecialist = assignedSpecialist;
-    this.enrollmentStatus = EnrollmentStatus.create(EnrollmentStatusType.NEW);
+    this.onboardingStatus = OnboardingStatus.create(OnboardingStatusType.NEW);
     this.auditTrail = [];
     this.documents = [];
     this.domainEvents = [];
 
     // ✅ Domain event on creation
     this.addDomainEvent(
-      new EnrollmentInitiatedEvent(enrollmentId, patient.patientId)
+      new OnboardingInitiatedEvent(onboardingId, patient.patientId)
     );
   }
 
@@ -152,27 +152,27 @@ export class NIVProgramEnrollment {
     assessedBy: UserId
   ): void {
     if (!this.canMakeQualificationDecision()) {
-      throw new InvalidQualificationStateError(this.enrollmentId);
+      throw new InvalidQualificationStateError(this.onboardingId);
     }
 
     this.qualificationAssessment = decision.assessment;
 
     if (decision.isQualified) {
       this.transitionStatus(
-        EnrollmentStatusType.PENDING,
-        "Patient qualified for NIV program",
+        OnboardingStatusType.PENDING,
+        'Patient qualified for NIV program',
         assessedBy
       );
     } else if (decision.requiresAdditionalLabs) {
       this.transitionStatus(
-        EnrollmentStatusType.CHANGED,
-        "Additional labs required",
+        OnboardingStatusType.CHANGED,
+        'Additional labs required',
         assessedBy
       );
     } else {
       this.transitionStatus(
-        EnrollmentStatusType.REVIEWED,
-        "Patient not qualified",
+        OnboardingStatusType.REVIEWED,
+        'Patient not qualified',
         assessedBy
       );
     }
@@ -180,7 +180,7 @@ export class NIVProgramEnrollment {
     // ✅ Domain event for qualification
     this.addDomainEvent(
       new QualificationCompletedEvent(
-        this.enrollmentId,
+        this.onboardingId,
         decision.isQualified,
         decision.reasoning,
         assessedBy
@@ -196,23 +196,23 @@ export class NIVProgramEnrollment {
 
     if (consentGiven) {
       this.transitionStatus(
-        EnrollmentStatusType.PENDING,
-        "Patient consented to NIV program",
+        OnboardingStatusType.PENDING,
+        'Patient consented to NIV program',
         this.assignedSpecialist.userId
       );
     } else {
-      this.scheduleForReReview(refusalReason || "Patient refused consent");
+      this.scheduleForReReview(refusalReason || 'Patient refused consent');
     }
   }
 
   public activateProgram(): void {
     if (!this.canActivate()) {
-      throw new InvalidActivationStateError(this.enrollmentId);
+      throw new InvalidActivationStateError(this.onboardingId);
     }
 
     this.transitionStatus(
-      EnrollmentStatusType.ACTIVE,
-      "NIV program activated for patient",
+      OnboardingStatusType.ACTIVE,
+      'NIV program activated for patient',
       this.assignedSpecialist.userId
     );
 
@@ -234,34 +234,34 @@ export class NIVProgramEnrollment {
 
   public canActivate(): boolean {
     return (
-      this.enrollmentStatus.status === EnrollmentStatusType.PENDING &&
+      this.onboardingStatus.status === OnboardingStatusType.PENDING &&
       this.hasRequiredDocuments() &&
       this.deviceConfigured()
     );
   }
 
-  public getProgress(): EnrollmentProgress {
+  public getProgress(): OnboardingProgress {
     const completedSteps = this.calculateCompletedSteps();
     const totalSteps = this.getTotalStepsForProgram();
-    return EnrollmentProgress.create(completedSteps, totalSteps);
+    return OnboardingProgress.create(completedSteps, totalSteps);
   }
 
   // ✅ AGGREGATE TRANSACTION BOUNDARY
   private transitionStatus(
-    newStatus: EnrollmentStatusType,
+    newStatus: OnboardingStatusType,
     reason: string,
     changedBy: UserId
   ): void {
-    const previousStatus = this.enrollmentStatus.status;
+    const previousStatus = this.onboardingStatus.status;
     this.validateStatusTransition(newStatus);
 
-    this.enrollmentStatus = EnrollmentStatus.create(newStatus, reason);
+    this.onboardingStatus = OnboardingStatus.create(newStatus, reason);
     this.addAuditEntry(AuditAction.STATUS_CHANGED, changedBy);
 
     // ✅ Domain event for status change
     this.addDomainEvent(
       new PatientStatusChangedEvent(
-        this.enrollmentId,
+        this.onboardingId,
         previousStatus,
         newStatus,
         reason,
@@ -287,14 +287,14 @@ export class NIVProgramEnrollment {
 ### 2.2 Immutable Value Objects
 
 ```typescript
-export class EnrollmentStatus {
-  readonly status: EnrollmentStatusType;
+export class OnboardingStatus {
+  readonly status: OnboardingStatusType;
   readonly timestamp: Date;
   readonly reason: string;
   readonly modifiedBy: UserId;
 
   private constructor(
-    status: EnrollmentStatusType,
+    status: OnboardingStatusType,
     reason: string,
     modifiedBy?: UserId
   ) {
@@ -306,25 +306,25 @@ export class EnrollmentStatus {
   }
 
   public static create(
-    status: EnrollmentStatusType,
-    reason: string = "",
+    status: OnboardingStatusType,
+    reason: string = '',
     modifiedBy?: UserId
-  ): EnrollmentStatus {
-    return new EnrollmentStatus(status, reason, modifiedBy);
+  ): OnboardingStatus {
+    return new OnboardingStatus(status, reason, modifiedBy);
   }
 
   // ✅ Value object business logic
-  public canTransitionTo(newStatus: EnrollmentStatusType): boolean {
+  public canTransitionTo(newStatus: OnboardingStatusType): boolean {
     const validTransitions = this.getValidTransitions();
     return validTransitions.includes(newStatus);
   }
 
   public isActive(): boolean {
-    return this.status === EnrollmentStatusType.ACTIVE;
+    return this.status === OnboardingStatusType.ACTIVE;
   }
 
   // ✅ Equality based on attributes (not identity)
-  public equals(other: EnrollmentStatus): boolean {
+  public equals(other: OnboardingStatus): boolean {
     return (
       this.status === other.status &&
       this.reason === other.reason &&
@@ -332,20 +332,20 @@ export class EnrollmentStatus {
     );
   }
 
-  private getValidTransitions(): EnrollmentStatusType[] {
+  private getValidTransitions(): OnboardingStatusType[] {
     const transitionMap = new Map([
-      [EnrollmentStatusType.NEW, [EnrollmentStatusType.WATCHLIST]],
+      [OnboardingStatusType.NEW, [OnboardingStatusType.WATCHLIST]],
       [
-        EnrollmentStatusType.WATCHLIST,
+        OnboardingStatusType.WATCHLIST,
         [
-          EnrollmentStatusType.PENDING,
-          EnrollmentStatusType.REVIEWED,
-          EnrollmentStatusType.CHANGED,
+          OnboardingStatusType.PENDING,
+          OnboardingStatusType.REVIEWED,
+          OnboardingStatusType.CHANGED,
         ],
       ],
-      [EnrollmentStatusType.PENDING, [EnrollmentStatusType.ACTIVE]],
-      [EnrollmentStatusType.CHANGED, [EnrollmentStatusType.WATCHLIST]],
-      [EnrollmentStatusType.REVIEWED, [EnrollmentStatusType.WATCHLIST]],
+      [OnboardingStatusType.PENDING, [OnboardingStatusType.ACTIVE]],
+      [OnboardingStatusType.CHANGED, [OnboardingStatusType.WATCHLIST]],
+      [OnboardingStatusType.REVIEWED, [OnboardingStatusType.WATCHLIST]],
     ]);
 
     return transitionMap.get(this.status) || [];
@@ -411,10 +411,10 @@ export class PatientDemographics {
     dateOfBirth: Date
   ): void {
     if (!firstName.trim() || !lastName.trim()) {
-      throw new InvalidDemographicsError("Name fields cannot be empty");
+      throw new InvalidDemographicsError('Name fields cannot be empty');
     }
     if (dateOfBirth > new Date()) {
-      throw new InvalidDemographicsError("Birth date cannot be in future");
+      throw new InvalidDemographicsError('Birth date cannot be in future');
     }
   }
 }
@@ -489,9 +489,9 @@ export class NIVEligibilityService {
     return new ConditionCheck(
       hasQualifyingCondition && !hasDisqualifyingCondition,
       hasQualifyingCondition
-        ? "Qualifying respiratory condition present"
-        : "No qualifying respiratory condition",
-      hasDisqualifyingCondition ? "Disqualifying condition present" : null
+        ? 'Qualifying respiratory condition present'
+        : 'No qualifying respiratory condition',
+      hasDisqualifyingCondition ? 'Disqualifying condition present' : null
     );
   }
 
@@ -501,15 +501,15 @@ export class NIVEligibilityService {
     );
 
     if (bloodGasResults.length === 0) {
-      return new ConditionCheck(false, "Blood gas results required");
+      return new ConditionCheck(false, 'Blood gas results required');
     }
 
     const latestBloodGas = bloodGasResults.sort(
       (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
     )[0];
 
-    const oxygenSaturation = latestBloodGas.getValue("oxygen_saturation");
-    const co2Levels = latestBloodGas.getValue("co2_partial_pressure");
+    const oxygenSaturation = latestBloodGas.getValue('oxygen_saturation');
+    const co2Levels = latestBloodGas.getValue('co2_partial_pressure');
 
     const meetsOxygenCriteria = oxygenSaturation < 88;
     const meetsCO2Criteria = co2Levels > 45;
@@ -546,16 +546,16 @@ export class NIVEligibilityService {
     }
 
     if (historyCheck.passed) {
-      reasons.push("Medical history compatible with NIV therapy");
+      reasons.push('Medical history compatible with NIV therapy');
     } else {
-      reasons.push("❌ Medical history indicates contraindications");
+      reasons.push('❌ Medical history indicates contraindications');
     }
 
     if (!ageCheck) {
-      reasons.push("❌ Patient age outside acceptable range for NIV therapy");
+      reasons.push('❌ Patient age outside acceptable range for NIV therapy');
     }
 
-    return reasons.join("; ");
+    return reasons.join('; ');
   }
 
   private determineRequiredAdditionalLabs(
@@ -572,7 +572,7 @@ export class NIVEligibilityService {
       requirements.push(
         new LabRequirement(
           LabType.BLOOD_GAS,
-          "Arterial blood gas analysis required within 7 days of assessment",
+          'Arterial blood gas analysis required within 7 days of assessment',
           Priority.HIGH
         )
       );
@@ -598,15 +598,15 @@ export class NIVEligibilityService {
 ```typescript
 // ✅ Abstract port interfaces - NO implementation details
 
-export interface ProgramEnrollmentRepositoryPort {
-  save(enrollment: ProgramEnrollment): Promise<void>;
-  findById(id: EnrollmentId): Promise<ProgramEnrollment>;
-  findByPatient(patientId: PatientId): Promise<ProgramEnrollment[]>;
-  findByFacility(facilityId: FacilityId): Promise<ProgramEnrollment[]>;
-  findByStatus(status: EnrollmentStatusType): Promise<ProgramEnrollment[]>;
+export interface ProgramOnboardingRepositoryPort {
+  save(onboarding: ProgramOnboarding): Promise<void>;
+  findById(id: OnboardingId): Promise<ProgramOnboarding>;
+  findByPatient(patientId: PatientId): Promise<ProgramOnboarding[]>;
+  findByFacility(facilityId: FacilityId): Promise<ProgramOnboarding[]>;
+  findByStatus(status: OnboardingStatusType): Promise<ProgramOnboarding[]>;
   findByCriteria(
-    criteria: EnrollmentSearchCriteria
-  ): Promise<ProgramEnrollment[]>;
+    criteria: OnboardingSearchCriteria
+  ): Promise<ProgramOnboarding[]>;
 }
 
 export interface PatientRepositoryPort {
@@ -628,7 +628,7 @@ export interface NotificationPort {
   sendEmail(recipient: EmailAddress, message: EmailMessage): Promise<void>;
   sendSMS(recipient: PhoneNumber, message: SMSMessage): Promise<void>;
   sendRoleBasedNotifications(
-    enrollment: ProgramEnrollment,
+    onboarding: ProgramOnboarding,
     eventType: NotificationEventType
   ): Promise<void>;
 }
@@ -645,19 +645,19 @@ export interface DocumentStoragePort {
 
 ```typescript
 @Injectable()
-export class ProgramEnrollmentService {
+export class ProgramOnboardingService {
   constructor(
     // ✅ Depend on PORTS (abstractions) not concrete implementations
-    @Inject("ProgramEnrollmentRepositoryPort")
-    private enrollmentRepo: ProgramEnrollmentRepositoryPort,
+    @Inject('ProgramOnboardingRepositoryPort')
+    private onboardingRepo: ProgramOnboardingRepositoryPort,
 
-    @Inject("PatientRepositoryPort")
+    @Inject('PatientRepositoryPort')
     private patientRepo: PatientRepositoryPort,
 
-    @Inject("PCCIntegrationPort")
+    @Inject('PCCIntegrationPort')
     private pccIntegration: PCCIntegrationPort,
 
-    @Inject("NotificationPort")
+    @Inject('NotificationPort')
     private notifications: NotificationPort,
 
     // ✅ Domain services - pure business logic
@@ -669,9 +669,9 @@ export class ProgramEnrollmentService {
   ) {}
 
   // ✅ APPLICATION SERVICE = ORCHESTRATION ONLY (No business logic)
-  async createEnrollment(
-    command: CreateEnrollmentCommand
-  ): Promise<EnrollmentId> {
+  async createOnboarding(
+    command: CreateOnboardingCommand
+  ): Promise<OnboardingId> {
     // 1. Validate command
     this.validateCommand(command);
 
@@ -689,44 +689,44 @@ export class ProgramEnrollmentService {
     );
 
     // 4. Domain factory creates aggregate
-    const enrollment = NIVProgramEnrollment.create(
-      EnrollmentId.generate(),
+    const onboarding = NIVProgramOnboarding.create(
+      OnboardingId.generate(),
       patient,
       specialist
     );
 
     // 5. Persist aggregate
-    await this.enrollmentRepo.save(enrollment);
+    await this.onboardingRepo.save(onboarding);
 
     // 6. Publish domain events
-    const events = enrollment.getUncommittedEvents();
+    const events = onboarding.getUncommittedEvents();
     await this.eventBus.publishAll(events);
-    enrollment.markEventsAsCommitted();
+    onboarding.markEventsAsCommitted();
 
     // 7. Trigger integrations (side effects)
     await this.notifications.sendRoleBasedNotifications(
-      enrollment,
+      onboarding,
       NotificationEventType.ENROLLMENT_INITIATED
     );
 
-    return enrollment.enrollmentId;
+    return onboarding.onboardingId;
   }
 
   async qualifyPatient(command: QualifyPatientCommand): Promise<void> {
     // 1. Load aggregate
-    const enrollment = await this.enrollmentRepo.findById(command.enrollmentId);
-    if (!enrollment) {
-      throw new EnrollmentNotFoundError(command.enrollmentId);
+    const onboarding = await this.onboardingRepo.findById(command.onboardingId);
+    if (!onboarding) {
+      throw new OnboardingNotFoundError(command.onboardingId);
     }
 
     // 2. Get clinical data
     const ehrData = await this.pccIntegration.getPatientData(
-      enrollment.patient.patientId
+      onboarding.patient.patientId
     );
 
     // 3. Domain service handles complex business logic
     const eligibilityAssessment = this.eligibilityService.assessEligibility(
-      enrollment.patient,
+      onboarding.patient,
       ehrData.labResults,
       ehrData.diagnosisCodes
     );
@@ -737,27 +737,27 @@ export class ProgramEnrollmentService {
       command.clinicalNotes
     );
 
-    enrollment.makeQualificationDecision(
+    onboarding.makeQualificationDecision(
       qualificationDecision,
       command.assessedBy
     );
 
     // 5. Persist changes
-    await this.enrollmentRepo.save(enrollment);
+    await this.onboardingRepo.save(onboarding);
 
     // 6. Publish events
-    const events = enrollment.getUncommittedEvents();
+    const events = onboarding.getUncommittedEvents();
     await this.eventBus.publishAll(events);
-    enrollment.markEventsAsCommitted();
+    onboarding.markEventsAsCommitted();
   }
 
   // ✅ Private methods handle orchestration concerns only
-  private validateCommand(command: CreateEnrollmentCommand): void {
+  private validateCommand(command: CreateOnboardingCommand): void {
     if (!command.patientId) {
-      throw new InvalidCommandError("Patient ID is required");
+      throw new InvalidCommandError('Patient ID is required');
     }
     if (!command.facilityId) {
-      throw new InvalidCommandError("Facility ID is required");
+      throw new InvalidCommandError('Facility ID is required');
     }
     // Command validation only - no business rules
   }
@@ -769,41 +769,41 @@ export class ProgramEnrollmentService {
 ```typescript
 // ✅ Repository Implementation - Implements Port Interface
 @Injectable()
-export class PostgreSQLProgramEnrollmentRepository
-  implements ProgramEnrollmentRepositoryPort
+export class PostgreSQLProgramOnboardingRepository
+  implements ProgramOnboardingRepositoryPort
 {
   constructor(
-    @InjectRepository(ProgramEnrollmentEntity)
-    private enrollmentRepository: Repository<ProgramEnrollmentEntity>,
+    @InjectRepository(ProgramOnboardingEntity)
+    private onboardingRepository: Repository<ProgramOnboardingEntity>,
     @InjectRepository(AuditTrailEntity)
     private auditRepository: Repository<AuditTrailEntity>
   ) {}
 
-  async save(enrollment: ProgramEnrollment): Promise<void> {
+  async save(onboarding: ProgramOnboarding): Promise<void> {
     // ✅ Transaction boundary at aggregate level
-    await this.enrollmentRepository.manager.transaction(async (manager) => {
+    await this.onboardingRepository.manager.transaction(async (manager) => {
       // Convert domain model to persistence model
-      const persistenceModel = this.toPersistenceModel(enrollment);
-      await manager.save(ProgramEnrollmentEntity, persistenceModel);
+      const persistenceModel = this.toPersistenceModel(onboarding);
+      await manager.save(ProgramOnboardingEntity, persistenceModel);
 
       // Save audit trail entries
-      const auditEntries = enrollment
+      const auditEntries = onboarding
         .getAuditHistory()
         .map((entry) => this.auditToPersistenceModel(entry));
       await manager.save(AuditTrailEntity, auditEntries);
 
       // Save documents metadata
-      const documentEntries = enrollment
+      const documentEntries = onboarding
         .getDocuments()
         .map((doc) => this.documentToPersistenceModel(doc));
       await manager.save(DocumentEntity, documentEntries);
     });
   }
 
-  async findById(id: EnrollmentId): Promise<ProgramEnrollment> {
-    const entity = await this.enrollmentRepository.findOne({
+  async findById(id: OnboardingId): Promise<ProgramOnboarding> {
+    const entity = await this.onboardingRepository.findOne({
       where: { id: id.value },
-      relations: ["patient", "auditTrail", "documents", "specialist"],
+      relations: ['patient', 'auditTrail', 'documents', 'specialist'],
     });
 
     if (!entity) {
@@ -815,45 +815,45 @@ export class PostgreSQLProgramEnrollmentRepository
   }
 
   // ✅ Translation between domain and persistence models
-  private toDomainModel(entity: ProgramEnrollmentEntity): ProgramEnrollment {
+  private toDomainModel(entity: ProgramOnboardingEntity): ProgramOnboarding {
     const patient = this.patientToDomainModel(entity.patient);
     const specialist = this.specialistToDomainModel(entity.specialist);
     const auditTrail = entity.auditTrail.map((audit) =>
       this.auditToDomainModel(audit)
     );
 
-    const enrollment = new NIVProgramEnrollment(
-      new EnrollmentId(entity.id),
+    const onboarding = new NIVProgramOnboarding(
+      new OnboardingId(entity.id),
       patient,
       specialist
     );
 
     // Restore aggregate state
-    enrollment.restoreState(
+    onboarding.restoreState(
       this.statusToDomainModel(entity.status, entity.statusReason),
       this.assessmentToDomainModel(entity.qualificationData),
       auditTrail
     );
 
-    return enrollment;
+    return onboarding;
   }
 
   private toPersistenceModel(
-    enrollment: ProgramEnrollment
-  ): ProgramEnrollmentEntity {
-    const entity = new ProgramEnrollmentEntity();
-    entity.id = enrollment.enrollmentId.value;
-    entity.patientId = enrollment.patient.patientId.value;
-    entity.specialistId = enrollment.assignedSpecialist.userId.value;
-    entity.status = enrollment.enrollmentStatus.status;
-    entity.statusReason = enrollment.enrollmentStatus.reason;
-    entity.programType = "NIV";
-    entity.createdAt = enrollment.enrollmentDate;
+    onboarding: ProgramOnboarding
+  ): ProgramOnboardingEntity {
+    const entity = new ProgramOnboardingEntity();
+    entity.id = onboarding.onboardingId.value;
+    entity.patientId = onboarding.patient.patientId.value;
+    entity.specialistId = onboarding.assignedSpecialist.userId.value;
+    entity.status = onboarding.onboardingStatus.status;
+    entity.statusReason = onboarding.onboardingStatus.reason;
+    entity.programType = 'NIV';
+    entity.createdAt = onboarding.onboardingDate;
     entity.updatedAt = new Date();
 
     // Serialize complex objects
     entity.qualificationData = JSON.stringify(
-      enrollment.qualificationAssessment
+      onboarding.qualificationAssessment
     );
 
     return entity;
@@ -888,8 +888,8 @@ export class PointClickCareAPIClient implements PCCIntegrationPort {
     endpoint: string,
     params: any = {}
   ): Promise<PCCResponse> {
-    const apiKey = this.configService.get("PCC_API_KEY");
-    const baseUrl = this.configService.get("PCC_BASE_URL");
+    const apiKey = this.configService.get('PCC_API_KEY');
+    const baseUrl = this.configService.get('PCC_BASE_URL');
 
     try {
       const response = await this.httpClient.axiosRef.get(
@@ -897,7 +897,7 @@ export class PointClickCareAPIClient implements PCCIntegrationPort {
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
           },
           params,
           timeout: 30000,
@@ -936,7 +936,7 @@ export class PointClickCareAPIClient implements PCCIntegrationPort {
     if (error.response?.status === 404) {
       throw new PatientNotFoundInPCCError(error.response.data.patientId);
     } else if (error.response?.status === 429) {
-      throw new PCCRateLimitError("API rate limit exceeded");
+      throw new PCCRateLimitError('API rate limit exceeded');
     } else {
       throw new PCCIntegrationError(`PCC API error: ${error.message}`);
     }
@@ -952,7 +952,7 @@ export class PointClickCareAPIClient implements PCCIntegrationPort {
 
 ```typescript
 // ✅ Command Objects (Write Operations)
-export class CreateEnrollmentCommand {
+export class CreateOnboardingCommand {
   constructor(
     public readonly patientId: PatientId,
     public readonly facilityId: FacilityId,
@@ -964,27 +964,27 @@ export class CreateEnrollmentCommand {
 
   private validate(): void {
     if (!this.patientId) {
-      throw new InvalidCommandError("Patient ID is required");
+      throw new InvalidCommandError('Patient ID is required');
     }
     if (!this.facilityId) {
-      throw new InvalidCommandError("Facility ID is required");
+      throw new InvalidCommandError('Facility ID is required');
     }
   }
 }
 
 export class QualifyPatientCommand {
   constructor(
-    public readonly enrollmentId: EnrollmentId,
+    public readonly onboardingId: OnboardingId,
     public readonly assessedBy: UserId,
     public readonly clinicalNotes: string
   ) {}
 }
 
 // ✅ Query Objects (Read Operations)
-export class SearchEnrollmentsQuery {
+export class SearchOnboardingsQuery {
   constructor(
     public readonly facilityId?: FacilityId,
-    public readonly status?: EnrollmentStatusType,
+    public readonly status?: OnboardingStatusType,
     public readonly assignedSpecialist?: UserId,
     public readonly userRole: UserRole,
     public readonly pagination: PaginationInfo = new PaginationInfo()
@@ -992,13 +992,13 @@ export class SearchEnrollmentsQuery {
 }
 
 // ✅ View Models (Response Objects)
-export class EnrollmentSearchResult {
+export class OnboardingSearchResult {
   constructor(
-    public readonly enrollmentId: EnrollmentId,
+    public readonly onboardingId: OnboardingId,
     public readonly patientName: string,
     public readonly facilityName: string,
-    public readonly status: EnrollmentStatusType,
-    public readonly progress: EnrollmentProgress,
+    public readonly status: OnboardingStatusType,
+    public readonly progress: OnboardingProgress,
     public readonly notifications: NotificationSummary,
     public readonly assignedSpecialist: string,
     public readonly lastUpdated: Date,
@@ -1010,20 +1010,20 @@ export class EnrollmentSearchResult {
 
   // ✅ Factory method with role-based creation
   public static fromDomain(
-    enrollment: ProgramEnrollment,
+    onboarding: ProgramOnboarding,
     userRole: UserRole
-  ): EnrollmentSearchResult {
+  ): OnboardingSearchResult {
     const permissions = PermissionService.getPermissions(userRole);
 
-    return new EnrollmentSearchResult(
-      enrollment.enrollmentId,
-      enrollment.patient.getFullName(),
-      enrollment.patient.facilityAssignment.name,
-      enrollment.enrollmentStatus.status,
-      enrollment.getProgress(),
-      NotificationSummary.forEnrollment(enrollment, userRole),
-      enrollment.assignedSpecialist.name,
-      enrollment.lastUpdated,
+    return new OnboardingSearchResult(
+      onboarding.onboardingId,
+      onboarding.patient.getFullName(),
+      onboarding.patient.facilityAssignment.name,
+      onboarding.onboardingStatus.status,
+      onboarding.getProgress(),
+      NotificationSummary.forOnboarding(onboarding, userRole),
+      onboarding.assignedSpecialist.name,
+      onboarding.lastUpdated,
       permissions.canEdit,
       permissions.canView,
       permissions.canDownloadAudit
@@ -1038,54 +1038,54 @@ export class EnrollmentSearchResult {
 @Injectable()
 export class PatientSearchService {
   constructor(
-    @Inject("PatientRepositoryPort")
+    @Inject('PatientRepositoryPort')
     private patientRepo: PatientRepositoryPort,
 
-    @Inject("ProgramEnrollmentRepositoryPort")
-    private enrollmentRepo: ProgramEnrollmentRepositoryPort,
+    @Inject('ProgramOnboardingRepositoryPort')
+    private onboardingRepo: ProgramOnboardingRepositoryPort,
 
     private permissionService: PermissionService
   ) {}
 
-  async searchEnrollments(
-    query: SearchEnrollmentsQuery
-  ): Promise<EnrollmentSearchResult[]> {
+  async searchOnboardings(
+    query: SearchOnboardingsQuery
+  ): Promise<OnboardingSearchResult[]> {
     // ✅ Repository handles complex queries
-    const enrollments = await this.enrollmentRepo.findByCriteria(
-      EnrollmentSearchCriteria.fromQuery(query)
+    const onboardings = await this.onboardingRepo.findByCriteria(
+      OnboardingSearchCriteria.fromQuery(query)
     );
 
     // ✅ Application service handles view model transformation
-    return enrollments.map((enrollment) =>
-      EnrollmentSearchResult.fromDomain(enrollment, query.userRole)
+    return onboardings.map((onboarding) =>
+      OnboardingSearchResult.fromDomain(onboarding, query.userRole)
     );
   }
 
-  async getEnrollmentsByFacility(
+  async getOnboardingsByFacility(
     facilityId: FacilityId,
     userRole: UserRole
-  ): Promise<FacilityEnrollmentView[]> {
+  ): Promise<FacilityOnboardingView[]> {
     // ✅ Role-based data access
     this.permissionService.validateFacilityAccess(userRole, facilityId);
 
-    const enrollments = await this.enrollmentRepo.findByFacility(facilityId);
+    const onboardings = await this.onboardingRepo.findByFacility(facilityId);
 
-    return enrollments.map((enrollment) =>
-      FacilityEnrollmentView.fromDomain(enrollment, userRole)
+    return onboardings.map((onboarding) =>
+      FacilityOnboardingView.fromDomain(onboarding, userRole)
     );
   }
 
   // ✅ View model optimization - no business logic
-  private createEnrollmentSearchResults(
-    enrollments: ProgramEnrollment[],
+  private createOnboardingSearchResults(
+    onboardings: ProgramOnboarding[],
     userRole: UserRole
-  ): EnrollmentSearchResult[] {
-    return enrollments
-      .filter((enrollment) =>
-        this.permissionService.canViewEnrollment(userRole, enrollment)
+  ): OnboardingSearchResult[] {
+    return onboardings
+      .filter((onboarding) =>
+        this.permissionService.canViewOnboarding(userRole, onboarding)
       )
-      .map((enrollment) =>
-        EnrollmentSearchResult.fromDomain(enrollment, userRole)
+      .map((onboarding) =>
+        OnboardingSearchResult.fromDomain(onboarding, userRole)
       );
   }
 }
@@ -1099,44 +1099,44 @@ export class PatientSearchService {
 
 ```typescript
 // ✅ Event Handler reacts to domain events
-@EventHandler(EnrollmentInitiatedEvent)
+@EventHandler(OnboardingInitiatedEvent)
 @Injectable()
 export class NotificationEventHandler {
   constructor(
-    @Inject("NotificationPort")
+    @Inject('NotificationPort')
     private notifications: NotificationPort,
 
-    @Inject("PatientRepositoryPort")
+    @Inject('PatientRepositoryPort')
     private patientRepo: PatientRepositoryPort
   ) {}
 
-  async handle(event: EnrollmentInitiatedEvent): Promise<void> {
+  async handle(event: OnboardingInitiatedEvent): Promise<void> {
     const patient = await this.patientRepo.findById(event.patientId);
-    const enrollment = await this.enrollmentRepo.findById(event.enrollmentId);
+    const onboarding = await this.onboardingRepo.findById(event.onboardingId);
 
     // ✅ Side effect: Send notifications
-    await this.sendEnrollmentNotifications(enrollment);
+    await this.sendOnboardingNotifications(onboarding);
   }
 
-  private async sendEnrollmentNotifications(
-    enrollment: ProgramEnrollment
+  private async sendOnboardingNotifications(
+    onboarding: ProgramOnboarding
   ): Promise<void> {
     // Determine notification recipients based on facility and roles
-    const recipients = await this.determineNotificationRecipients(enrollment);
+    const recipients = await this.determineNotificationRecipients(onboarding);
 
     // Send role-specific notifications
     await Promise.all(
       recipients.map((recipient) =>
-        this.sendRoleSpecificNotification(enrollment, recipient)
+        this.sendRoleSpecificNotification(onboarding, recipient)
       )
     );
   }
 
   private async sendRoleSpecificNotification(
-    enrollment: ProgramEnrollment,
+    onboarding: ProgramOnboarding,
     recipient: NotificationRecipient
   ): Promise<void> {
-    const message = this.createNotificationMessage(enrollment, recipient.role);
+    const message = this.createNotificationMessage(onboarding, recipient.role);
 
     switch (recipient.preferredChannel) {
       case NotificationChannel.EMAIL:
@@ -1160,7 +1160,7 @@ export class NotificationEventHandler {
 @Injectable()
 export class AuditEventHandler {
   constructor(
-    @Inject("AuditTrailRepositoryPort")
+    @Inject('AuditTrailRepositoryPort')
     private auditRepo: AuditTrailRepositoryPort
   ) {}
 
@@ -1187,8 +1187,8 @@ export class AuditEventHandler {
 ```sql
 -- ✅ Database schema supporting aggregate persistence
 
--- Program Enrollments (Aggregate Root)
-CREATE TABLE program_enrollments (
+-- Program Onboardings (Aggregate Root)
+CREATE TABLE program_onboardings (
     id UUID PRIMARY KEY,
     patient_id UUID NOT NULL REFERENCES patients(id),
     program_type VARCHAR(50) NOT NULL,
@@ -1197,7 +1197,7 @@ CREATE TABLE program_enrollments (
     assigned_specialist_id UUID NOT NULL,
     qualification_data JSONB,
     device_configuration JSONB,
-    enrollment_date TIMESTAMP NOT NULL,
+    onboarding_date TIMESTAMP NOT NULL,
     target_activation_date TIMESTAMP,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
@@ -1221,7 +1221,7 @@ CREATE TABLE patients (
 -- Audit Trail (Entity within aggregate boundary)
 CREATE TABLE audit_trail_entries (
     id UUID PRIMARY KEY,
-    enrollment_id UUID NOT NULL REFERENCES program_enrollments(id),
+    onboarding_id UUID NOT NULL REFERENCES program_onboardings(id),
     action VARCHAR(100) NOT NULL,
     performed_by UUID NOT NULL,
     timestamp TIMESTAMP NOT NULL,
@@ -1233,7 +1233,7 @@ CREATE TABLE audit_trail_entries (
 -- Document Metadata (Entity within aggregate boundary)
 CREATE TABLE document_metadata (
     id UUID PRIMARY KEY,
-    enrollment_id UUID NOT NULL REFERENCES program_enrollments(id),
+    onboarding_id UUID NOT NULL REFERENCES program_onboardings(id),
     file_name VARCHAR(255) NOT NULL,
     file_type VARCHAR(50) NOT NULL,
     file_size BIGINT NOT NULL,
@@ -1246,7 +1246,7 @@ CREATE TABLE document_metadata (
 -- Notifications (Separate aggregate)
 CREATE TABLE notifications (
     id UUID PRIMARY KEY,
-    enrollment_id UUID NOT NULL,
+    onboarding_id UUID NOT NULL,
     user_role VARCHAR(50) NOT NULL,
     notification_type VARCHAR(100) NOT NULL,
     title VARCHAR(200) NOT NULL,
@@ -1257,9 +1257,9 @@ CREATE TABLE notifications (
 );
 
 -- Indexes for query performance
-CREATE INDEX idx_enrollments_facility_status ON program_enrollments(facility_id, status);
-CREATE INDEX idx_enrollments_specialist ON program_enrollments(assigned_specialist_id);
-CREATE INDEX idx_audit_enrollment ON audit_trail_entries(enrollment_id, timestamp);
+CREATE INDEX idx_onboardings_facility_status ON program_onboardings(facility_id, status);
+CREATE INDEX idx_onboardings_specialist ON program_onboardings(assigned_specialist_id);
+CREATE INDEX idx_audit_onboarding ON audit_trail_entries(onboarding_id, timestamp);
 CREATE INDEX idx_notifications_role ON notifications(user_role, is_read, created_at);
 ```
 
@@ -1273,26 +1273,26 @@ CREATE INDEX idx_notifications_role ON notifications(user_role, is_read, created
 apps/backend/niv/src/
 ├── application/                    # ✅ Application Services & Ports
 │   ├── services/
-│   │   ├── program-enrollment.service.ts
+│   │   ├── program-onboarding.service.ts
 │   │   ├── patient-search.service.ts
 │   │   ├── audit-trail.service.ts
 │   │   └── notification-display.service.ts
 │   ├── commands/
-│   │   ├── create-enrollment.command.ts
+│   │   ├── create-onboarding.command.ts
 │   │   ├── qualify-patient.command.ts
 │   │   └── activate-program.command.ts
 │   ├── queries/
-│   │   ├── search-enrollments.query.ts
-│   │   └── enrollment-history.query.ts
+│   │   ├── search-onboardings.query.ts
+│   │   └── onboarding-history.query.ts
 │   ├── ports/
-│   │   ├── program-enrollment.repository.interface.ts
+│   │   ├── program-onboarding.repository.interface.ts
 │   │   ├── patient.repository.interface.ts
 │   │   ├── pcc-integration.interface.ts
 │   │   ├── notification.interface.ts
 │   │   └── document-storage.interface.ts
 │   └── view-models/
-│       ├── enrollment-search-result.ts
-│       └── facility-enrollment-view.ts
+│       ├── onboarding-search-result.ts
+│       └── facility-onboarding-view.ts
 │
 ├── domain/                         # ✅ Pure Business Logic
 │   ├── shared/
@@ -1302,11 +1302,11 @@ apps/backend/niv/src/
 │   │   │   └── clinical-specialist.entity.ts
 │   │   ├── value-objects/
 │   │   │   ├── patient-demographics.vo.ts
-│   │   │   ├── enrollment-status.vo.ts
-│   │   │   ├── enrollment-progress.vo.ts
+│   │   │   ├── onboarding-status.vo.ts
+│   │   │   ├── onboarding-progress.vo.ts
 │   │   │   └── notification-summary.vo.ts
 │   │   ├── domain-events/
-│   │   │   ├── enrollment-initiated.event.ts
+│   │   │   ├── onboarding-initiated.event.ts
 │   │   │   ├── qualification-completed.event.ts
 │   │   │   └── patient-status-changed.event.ts
 │   │   └── services/
@@ -1316,7 +1316,7 @@ apps/backend/niv/src/
 │   └── programs/
 │       └── niv/
 │           ├── entities/
-│           │   ├── niv-program-enrollment.entity.ts
+│           │   ├── niv-program-onboarding.entity.ts
 │           │   ├── niv-qualification-assessment.entity.ts
 │           │   └── niv-device-configuration.entity.ts
 │           ├── value-objects/
@@ -1326,16 +1326,16 @@ apps/backend/niv/src/
 │           ├── services/
 │           │   └── niv-eligibility.service.ts
 │           └── factories/
-│               └── niv-enrollment.factory.ts
+│               └── niv-onboarding.factory.ts
 │
 ├── infrastructure/                 # ✅ External System Implementations
 │   ├── repositories/
 │   │   ├── postgresql/
-│   │   │   ├── program-enrollment.repository.ts
+│   │   │   ├── program-onboarding.repository.ts
 │   │   │   ├── patient.repository.ts
 │   │   │   └── audit-trail.repository.ts
 │   │   └── entities/
-│   │       ├── program-enrollment.entity.ts
+│   │       ├── program-onboarding.entity.ts
 │   │       ├── patient.entity.ts
 │   │       └── audit-trail.entity.ts
 │   ├── integrations/
@@ -1360,7 +1360,7 @@ apps/backend/niv/src/
 │
 └── presenters/                     # ✅ Controllers & External Interfaces
     ├── controllers/
-    │   ├── program-enrollment.controller.ts
+    │   ├── program-onboarding.controller.ts
     │   ├── patient-search.controller.ts
     │   ├── audit-trail.controller.ts
     │   └── notification.controller.ts
@@ -1368,9 +1368,9 @@ apps/backend/niv/src/
     │   ├── pcc-webhook.controller.ts
     │   └── platform-webhook.controller.ts
     ├── dto/
-    │   ├── create-enrollment.dto.ts
-    │   ├── search-enrollments.dto.ts
-    │   └── enrollment-response.dto.ts
+    │   ├── create-onboarding.dto.ts
+    │   ├── search-onboardings.dto.ts
+    │   └── onboarding-response.dto.ts
     └── middleware/
         ├── authentication.middleware.ts
         └── authorization.middleware.ts
@@ -1384,7 +1384,7 @@ apps/backend/niv/src/
     // Infrastructure modules
     TypeOrmModule.forRoot(databaseConfig),
     TypeOrmModule.forFeature([
-      ProgramEnrollmentEntity,
+      ProgramOnboardingEntity,
       PatientEntity,
       AuditTrailEntity,
       DocumentEntity,
@@ -1401,7 +1401,7 @@ apps/backend/niv/src/
 
   providers: [
     // ✅ Application Services
-    ProgramEnrollmentService,
+    ProgramOnboardingService,
     PatientSearchService,
     AuditTrailService,
     NotificationDisplayService,
@@ -1413,23 +1413,23 @@ apps/backend/niv/src/
 
     // ✅ Port Implementations (Dependency Injection)
     {
-      provide: "ProgramEnrollmentRepositoryPort",
-      useClass: PostgreSQLProgramEnrollmentRepository,
+      provide: 'ProgramOnboardingRepositoryPort',
+      useClass: PostgreSQLProgramOnboardingRepository,
     },
     {
-      provide: "PatientRepositoryPort",
+      provide: 'PatientRepositoryPort',
       useClass: PostgreSQLPatientRepository,
     },
     {
-      provide: "PCCIntegrationPort",
+      provide: 'PCCIntegrationPort',
       useClass: PointClickCareAPIClient,
     },
     {
-      provide: "NotificationPort",
+      provide: 'NotificationPort',
       useClass: CompositeNotificationAdapter,
     },
     {
-      provide: "DocumentStoragePort",
+      provide: 'DocumentStoragePort',
       useClass: S3DocumentRepository,
     },
 
@@ -1447,7 +1447,7 @@ apps/backend/niv/src/
 
   controllers: [
     // ✅ Presenters (Primary Adapters)
-    ProgramEnrollmentController,
+    ProgramOnboardingController,
     PatientSearchController,
     AuditTrailController,
     NotificationController,
@@ -1457,7 +1457,7 @@ apps/backend/niv/src/
 
   exports: [
     // Export services for other modules
-    ProgramEnrollmentService,
+    ProgramOnboardingService,
     PatientSearchService,
   ],
 })
@@ -1492,13 +1492,13 @@ export class IntegrationEventHandler {
 
 // ✅ Integration Event Types
 export class PatientEnrolledInNIVIntegrationEvent {
-  readonly eventType = "PatientEnrolledInNIV";
-  readonly version = "1.0";
+  readonly eventType = 'PatientEnrolledInNIV';
+  readonly version = '1.0';
 
   constructor(
     public readonly facilityId: string,
     public readonly patientName: string,
-    public readonly enrollmentDate: Date,
+    public readonly onboardingDate: Date,
     public readonly assignedSpecialist: string
   ) {}
 }
@@ -1507,14 +1507,14 @@ export class PatientEnrolledInNIVIntegrationEvent {
 ### 7.2 Webhook Integration Patterns
 
 ```typescript
-@Controller("webhooks")
+@Controller('webhooks')
 export class PCCWebhookController {
   constructor(
-    private enrollmentService: ProgramEnrollmentService,
+    private onboardingService: ProgramOnboardingService,
     private webhookValidator: WebhookValidationService
   ) {}
 
-  @Post("pcc/patient-updated")
+  @Post('pcc/patient-updated')
   async handlePatientUpdate(
     @Body() payload: PCCPatientUpdatedPayload
   ): Promise<void> {
@@ -1529,10 +1529,10 @@ export class PCCWebhookController {
     );
 
     // ✅ Delegate to application service
-    await this.enrollmentService.updatePatientData(command);
+    await this.onboardingService.updatePatientData(command);
   }
 
-  @Post("platform/patient-admitted")
+  @Post('platform/patient-admitted')
   async handlePatientAdmission(
     @Body() payload: PatientAdmissionPayload
   ): Promise<void> {
@@ -1545,7 +1545,7 @@ export class PCCWebhookController {
       SystemUserId.PLATFORM_INTEGRATION
     );
 
-    await this.enrollmentService.initiateEligibilityAssessment(
+    await this.onboardingService.initiateEligibilityAssessment(
       assessmentCommand
     );
   }
@@ -1583,7 +1583,7 @@ class Patient {
     );
   }
 
-  public enrollInProgram(programType: ProgramType): ProgramEnrollment {
+  public enrollInProgram(programType: ProgramType): ProgramOnboarding {
     // Business logic and validation
   }
 }
@@ -1593,7 +1593,7 @@ class Patient {
 
 ```typescript
 // Aggregate enforces consistency
-class NIVProgramEnrollment {
+class NIVProgramOnboarding {
   public makeQualificationDecision(decision: QualificationDecision): void {
     // ✅ All changes within aggregate boundary
     this.validateStateTransition();
@@ -1635,10 +1635,10 @@ External Systems → Infrastructure → Application → Domain
 ```typescript
 // Application depends on abstraction
 @Injectable()
-export class ProgramEnrollmentService {
+export class ProgramOnboardingService {
   constructor(
-    @Inject("ProgramEnrollmentRepositoryPort") // ✅ Port interface
-    private repo: ProgramEnrollmentRepositoryPort // ✅ Not concrete class
+    @Inject('ProgramOnboardingRepositoryPort') // ✅ Port interface
+    private repo: ProgramOnboardingRepositoryPort // ✅ Not concrete class
   ) {}
 }
 ```
@@ -1647,8 +1647,8 @@ export class ProgramEnrollmentService {
 
 ```typescript
 // Infrastructure implements port
-export class PostgreSQLProgramEnrollmentRepository
-  implements ProgramEnrollmentRepositoryPort {
+export class PostgreSQLProgramOnboardingRepository
+  implements ProgramOnboardingRepositoryPort {
   // ✅ Implements port
   // Concrete implementation
 }
@@ -1659,8 +1659,8 @@ export class PostgreSQLProgramEnrollmentRepository
 **✅ Domain can be tested without external dependencies:**
 
 ```typescript
-describe("NIVEligibilityService", () => {
-  it("should assess patient eligibility correctly", () => {
+describe('NIVEligibilityService', () => {
+  it('should assess patient eligibility correctly', () => {
     // ✅ No mocks needed - pure business logic test
     const patient = new Patient(validPatientData);
     const labResults = [new LabResult(bloodGasData)];
@@ -1674,7 +1674,7 @@ describe("NIVEligibilityService", () => {
     );
 
     expect(assessment.isEligible).toBe(true);
-    expect(assessment.reasoning).toContain("Qualifying respiratory condition");
+    expect(assessment.reasoning).toContain('Qualifying respiratory condition');
   });
 });
 ```
@@ -1685,13 +1685,13 @@ describe("NIVEligibilityService", () => {
 
 ```typescript
 // Can replace PostgreSQL with MongoDB
-const mongoRepo = new MongoDBProgramEnrollmentRepository();
-const service = new ProgramEnrollmentService(mongoRepo, ...);
+const mongoRepo = new MongoDBProgramOnboardingRepository();
+const service = new ProgramOnboardingService(mongoRepo, ...);
 // Business logic unchanged
 
 // Can replace PointClickCare with different EHR
 const epicClient = new EpicEHRClient();
-const service = new ProgramEnrollmentService(..., epicClient);
+const service = new ProgramOnboardingService(..., epicClient);
 // Business logic unchanged
 ```
 

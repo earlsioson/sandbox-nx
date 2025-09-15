@@ -28,7 +28,7 @@ UX design shows different notification columns for various roles (RT, Nurse, Adm
 - [ ] Upload documents
 - [ ] Download audit reports
 - [ ] Manually refresh EHR data
-- [ ] Create new patient enrollments
+- [ ] Create new patient onboardings
 
 **Additional RT permissions:**
 
@@ -61,7 +61,7 @@ UX design shows different notification columns for various roles (RT, Nurse, Adm
 
 - [ ] View all patients in their facility
 - [ ] View patients across multiple facilities (if managing multiple)
-- [ ] Create new patient enrollments
+- [ ] Create new patient onboardings
 - [ ] Edit patient information
 - [ ] Assign RTs to patients
 - [ ] Download audit reports

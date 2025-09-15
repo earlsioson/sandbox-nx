@@ -16,7 +16,7 @@ The NIV (Noninvasive Ventilator) onboarding workflow has **time-sensitive clinic
 **Webhook Use Case**: Real-time EHR data synchronization
 
 - **Lab Results**: New blood gas results that immediately affect NIV qualification decisions
-- **Patient Status Changes**: Admissions, transfers, condition updates that trigger enrollment workflow
+- **Patient Status Changes**: Admissions, transfers, condition updates that trigger onboarding workflow
 - **Clinical Documentation**: Updated diagnoses, physician orders, vital signs
 
 **Alternative Considered**: Polling PCC API every 5-15 minutes
@@ -43,9 +43,9 @@ The NIV (Noninvasive Ventilator) onboarding workflow has **time-sensitive clinic
 
 ### **3. External System Triggers**
 
-**Webhook Use Case**: Patient enrollment initiation
+**Webhook Use Case**: Patient onboarding initiation
 
-- External systems (EMR, nursing stations, physician orders) can trigger NIV enrollment
+- External systems (EMR, nursing stations, physician orders) can trigger NIV onboarding
 - Provides standardized HTTP-based integration point
 - Enables future integrations without architectural changes
 
@@ -101,7 +101,7 @@ Webhooks are **industry standard** for healthcare integrations:
 // Webhook approach (simple)
 @Post('/webhooks/patient-added')
 async handlePatientAdded(@Body() data: PatientData) {
-  await this.enrollmentService.initiateEnrollment(data);
+  await this.onboardingService.initiateOnboarding(data);
 }
 
 // vs. Polling approach (complex)

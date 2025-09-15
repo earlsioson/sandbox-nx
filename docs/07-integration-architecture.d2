@@ -63,9 +63,9 @@ niv_application: NIV Application (Hexagonal Architecture) {
     }
 
     rest_controllers: REST Controllers {
-      PatientSearchController: "• GET /api/patients/search\n• GET /api/enrollments/search\n• GET /api/enrollments/facility/{id}"
-      ProgramEnrollmentController: "• POST /api/enrollments\n• PUT /api/enrollments/{id}/qualify\n• PUT /api/enrollments/{id}/activate"
-      AuditTrailController: "• GET /api/audit/enrollment/{id}\n• POST /api/audit/report"
+      PatientSearchController: "• GET /api/patients/search\n• GET /api/onboardings/search\n• GET /api/onboardings/facility/{id}"
+      ProgramOnboardingController: "• POST /api/onboardings\n• PUT /api/onboardings/{id}/qualify\n• PUT /api/onboardings/{id}/activate"
+      AuditTrailController: "• GET /api/audit/onboarding/{id}\n• POST /api/audit/report"
 
       note: "HTTP endpoints\nRequest/Response transformation"
     }
@@ -80,8 +80,8 @@ niv_application: NIV Application (Hexagonal Architecture) {
 
   # Application Layer (Orchestration)
   application_services: Application Services {
-    ProgramEnrollmentService: "• Create enrollments\n• Process qualifications\n• Manage state transitions"
-    PatientSearchService: "• Search patients and enrollments\n• Filter and sort results\n• Generate view models"
+    ProgramOnboardingService: "• Create onboardings\n• Process qualifications\n• Manage state transitions"
+    PatientSearchService: "• Search patients and onboardings\n• Filter and sort results\n• Generate view models"
     AuditTrailService: "• Track user actions\n• Generate compliance reports\n• Manage audit history"
     NotificationDisplayService: "• Aggregate notifications\n• Format for display\n• Mark as read/unread"
 
@@ -90,10 +90,10 @@ niv_application: NIV Application (Hexagonal Architecture) {
 
   # Domain Core (Business Logic)
   domain_core: Domain Core {
-    aggregates: "• NIVProgramEnrollment (Aggregate Root)\n• Patient\n• ClinicalSpecialist"
+    aggregates: "• NIVProgramOnboarding (Aggregate Root)\n• Patient\n• ClinicalSpecialist"
     domain_services: "• NIVEligibilityService\n• SpecialistAssignmentService"
-    value_objects: "• EnrollmentStatus\n• PatientDemographics\n• NotificationSummary"
-    domain_events: "• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent"
+    value_objects: "• OnboardingStatus\n• PatientDemographics\n• NotificationSummary"
+    domain_events: "• OnboardingInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent"
 
     note: "Pure business logic\nZero external dependencies"
   }
@@ -101,7 +101,7 @@ niv_application: NIV Application (Hexagonal Architecture) {
   # Infrastructure Layer (Secondary Adapters)
   infrastructure: Infrastructure Layer {
     repositories: Repository Adapters {
-      PostgreSQLProgramEnrollmentRepository: "Implements ProgramEnrollmentRepositoryPort"
+      PostgreSQLProgramOnboardingRepository: "Implements ProgramOnboardingRepositoryPort"
       PostgreSQLPatientRepository: "Implements PatientRepositoryPort"
       PostgreSQLAuditRepository: "Implements AuditTrailRepositoryPort"
 
@@ -135,7 +135,7 @@ event_architecture: Event Architecture Layers {
 
     characteristics: "Characteristics:\n• Rich domain context\n• Internal to NIV application\n• Can evolve freely\n• Detailed business information\n• Never cross system boundaries"
 
-    examples: "Internal Domain Events:\n• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent\n• DeviceFittingScheduledEvent\n• DocumentUploadedEvent\n• ConsentResponseReceivedEvent"
+    examples: "Internal Domain Events:\n• OnboardingInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent\n• DeviceFittingScheduledEvent\n• DocumentUploadedEvent\n• ConsentResponseReceivedEvent"
 
     usage_rules: "Usage Rules:\n• Published by domain aggregates\n• Handled by NIV event handlers\n• Contain rich business context\n• Can change without external impact"
 
@@ -148,7 +148,7 @@ event_architecture: Event Architecture Layers {
     style.fill: "#FFF3E0"
 
     transformation_service: Domain to Integration Event Mapper {
-      mapEnrollmentInitiated: "EnrollmentInitiatedEvent → PatientEnrolledInNIVProgram"
+      mapOnboardingInitiated: "OnboardingInitiatedEvent → PatientEnrolledInNIVProgram"
       mapQualificationCompleted: "QualificationCompletedEvent → NIVQualificationStatusChanged"
       mapStatusChanged: "PatientStatusChangedEvent → NIVQualificationStatusChanged"
       mapProgramActivated: "ProgramActivatedEvent → PatientCareTransitionEvent"
@@ -185,7 +185,7 @@ messaging_infrastructure: Event & Message Infrastructure {
   domain_event_bus: Domain Event Bus {
     shape: hexagon
 
-    internal_events: "Internal Domain Events:\n• EnrollmentInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent\n• DocumentUploadedEvent"
+    internal_events: "Internal Domain Events:\n• OnboardingInitiatedEvent\n• QualificationCompletedEvent\n• PatientStatusChangedEvent\n• DocumentUploadedEvent"
 
     event_handlers: "Registered Handlers:\n• NotificationEventHandler\n• AuditEventHandler\n• IntegrationEventHandler"
 
@@ -218,7 +218,7 @@ persistence_layer: Data & Document Storage {
   niv_database: NIV Database {
     shape: cylinder
 
-    core_data: "Core Tables:\n• program_enrollments\n• patients\n• clinical_specialists\n• audit_trail_entries"
+    core_data: "Core Tables:\n• program_onboardings\n• patients\n• clinical_specialists\n• audit_trail_entries"
 
     operational_data: "Operational Tables:\n• notifications\n• user_preferences\n• document_metadata\n• system_configuration"
 

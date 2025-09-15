@@ -27,26 +27,26 @@ entities: Rich Domain Entities {
 
     # Rich Business Behavior (NOT Anemic)
     getFullName: "+getFullName(): string"
-    isValidForEnrollment: "+isValidForProgramEnrollment(): boolean"
+    isValidForOnboarding: "+isValidForProgramOnboarding(): boolean"
     isEligibleForNIV: "+isEligibleForNIV(criteria: NIVCriteria): boolean"
     updateDemographics: "+updateDemographics(demographics: PatientDemographics): void"
-    enrollInProgram: "+enrollInProgram(programType: ProgramType): ProgramEnrollment"
+    enrollInProgram: "+enrollInProgram(programType: ProgramType): ProgramOnboarding"
     validateMedicalRequirements: "+validateMedicalRequirements(): ValidationResult"
 
     note: "Rich Entity with Business Logic\nNOT just data holder"
   }
 
-  ProgramEnrollment: ProgramEnrollment {
+  ProgramOnboarding: ProgramOnboarding {
     shape: class
-    label: "<<Aggregate Root>> ProgramEnrollment"
+    label: "<<Aggregate Root>> ProgramOnboarding"
 
     # Aggregate Root Identity
-    enrollmentId: "-enrollmentId: EnrollmentId"
+    onboardingId: "-onboardingId: OnboardingId"
 
     # Aggregate State
     patient: "-patient: Patient"
     programType: "-programType: ProgramType"
-    enrollmentStatus: "-enrollmentStatus: EnrollmentStatus"
+    onboardingStatus: "-onboardingStatus: OnboardingStatus"
     assignedSpecialist: "-assignedSpecialist: ClinicalSpecialist"
     auditTrail: "-auditTrail: AuditTrailEntry[]"
     documents: "-documents: DocumentMetadata[]"
@@ -55,12 +55,12 @@ entities: Rich Domain Entities {
     separator2: "──────────────────────────────"
 
     # Aggregate Business Operations
-    transitionStatus: "+transitionStatus(newStatus: EnrollmentStatusType, reason: string): void"
+    transitionStatus: "+transitionStatus(newStatus: OnboardingStatusType, reason: string): void"
     addAuditEntry: "+addAuditEntry(action: AuditAction, performedBy: UserId): void"
     attachDocument: "+attachDocument(document: DocumentMetadata): void"
     assignSpecialist: "+assignSpecialist(specialist: ClinicalSpecialist): void"
-    getProgress: "+getProgress(): EnrollmentProgress"
-    canTransitionTo: "+canTransitionTo(status: EnrollmentStatusType): boolean"
+    getProgress: "+getProgress(): OnboardingProgress"
+    canTransitionTo: "+canTransitionTo(status: OnboardingStatusType): boolean"
     makeQualificationDecision: "+makeQualificationDecision(decision: QualificationDecision): void"
     processConsentResponse: "+processConsentResponse(consent: ConsentResponse): void"
     getDomainEvents: "+getDomainEvents(): DomainEvent[]"
@@ -69,9 +69,9 @@ entities: Rich Domain Entities {
     note: "Aggregate Root\nConsistency boundary"
   }
 
-  NIVProgramEnrollment: NIVProgramEnrollment {
+  NIVProgramOnboarding: NIVProgramOnboarding {
     shape: class
-    label: "<<NIV Aggregate Root>> NIVProgramEnrollment"
+    label: "<<NIV Aggregate Root>> NIVProgramOnboarding"
 
     # NIV-Specific Properties
     qualificationAssessment: "-qualificationAssessment: NIVQualificationAssessment"
@@ -87,7 +87,7 @@ entities: Rich Domain Entities {
     disqualifyPatient: "+disqualifyPatient(reason: DisqualificationReason): void"
     returnToAssessment: "+returnToAssessment(): void"
 
-    note: "NIV-specific aggregate\nExtends ProgramEnrollment"
+    note: "NIV-specific aggregate\nExtends ProgramOnboarding"
   }
 
   AuditTrailEntry: AuditTrailEntry {
@@ -136,7 +136,7 @@ entities: Rich Domain Entities {
 
 # Domain Factories (Enhanced - Encapsulate Complex Creation)
 factories: Domain Factories {
-  NIVProgramEnrollmentFactory: NIVProgramEnrollmentFactory {
+  NIVProgramOnboardingFactory: NIVProgramOnboardingFactory {
     shape: class
 
     # Dependencies
@@ -145,10 +145,10 @@ factories: Domain Factories {
     separator1: "──────────────────────────────"
 
     # Factory Methods for Different Creation Scenarios
-    createFromPatientAdmission: "+createFromPatientAdmission(patient: Patient, admissionEvent: AdmissionEvent, facilityId: FacilityId): NIVProgramEnrollment"
-    createFromManualAssessment: "+createFromManualAssessment(patient: Patient, requestingRT: ClinicalSpecialist, facilityId: FacilityId): NIVProgramEnrollment"
-    createFromPlatformEvent: "+createFromPlatformEvent(patientId: PatientId, platformEvent: PlatformAdmissionEvent): NIVProgramEnrollment"
-    createFromEHRTrigger: "+createFromEHRTrigger(patientId: PatientId, ehrEvent: EHREvent): NIVProgramEnrollment"
+    createFromPatientAdmission: "+createFromPatientAdmission(patient: Patient, admissionEvent: AdmissionEvent, facilityId: FacilityId): NIVProgramOnboarding"
+    createFromManualAssessment: "+createFromManualAssessment(patient: Patient, requestingRT: ClinicalSpecialist, facilityId: FacilityId): NIVProgramOnboarding"
+    createFromPlatformEvent: "+createFromPlatformEvent(patientId: PatientId, platformEvent: PlatformAdmissionEvent): NIVProgramOnboarding"
+    createFromEHRTrigger: "+createFromEHRTrigger(patientId: PatientId, ehrEvent: EHREvent): NIVProgramOnboarding"
 
     separator2: "──────────────────────────────"
 
@@ -156,7 +156,7 @@ factories: Domain Factories {
     validatePatientForNIV: "-validatePatientForNIV(patient: Patient): void"
     assignOptimalSpecialist: "-assignOptimalSpecialist(patient: Patient, facilityId: FacilityId): ClinicalSpecialist"
     initializeAuditTrail: "-initializeAuditTrail(createdBy: UserId, source: CreationSource): AuditTrailEntry"
-    setupInitialNotifications: "-setupInitialNotifications(enrollment: NIVProgramEnrollment): void"
+    setupInitialNotifications: "-setupInitialNotifications(onboarding: NIVProgramOnboarding): void"
 
     note: "Encapsulates complex creation logic\nHandles multiple creation scenarios\nEnsures proper initialization"
   }
@@ -193,32 +193,32 @@ factories: Domain Factories {
 
 # Value Objects (Immutable Business Concepts)
 value_objects: Value Objects {
-  EnrollmentStatus: EnrollmentStatus {
+  OnboardingStatus: OnboardingStatus {
     shape: class
-    label: "<<Value Object>> EnrollmentStatus"
+    label: "<<Value Object>> OnboardingStatus"
 
     # Status Properties
-    statusType: "+readonly statusType: EnrollmentStatusType"
+    statusType: "+readonly statusType: OnboardingStatusType"
     transitionDate: "+readonly transitionDate: Date"
     reason: "+readonly reason: string"
-    validTransitions: "+readonly validTransitions: EnrollmentStatusType[]"
+    validTransitions: "+readonly validTransitions: OnboardingStatusType[]"
 
     separator1: "──────────────────────────────"
 
     # Status Operations
-    canTransitionTo: "+canTransitionTo(newStatus: EnrollmentStatusType): boolean"
-    createTransition: "+createTransition(newStatus: EnrollmentStatusType, reason: string): EnrollmentStatus"
+    canTransitionTo: "+canTransitionTo(newStatus: OnboardingStatusType): boolean"
+    createTransition: "+createTransition(newStatus: OnboardingStatusType, reason: string): OnboardingStatus"
     isActive: "+isActive(): boolean"
     requiresAction: "+requiresAction(): boolean"
     getDisplayText: "+getDisplayText(): string"
-    equals: "+equals(other: EnrollmentStatus): boolean"
+    equals: "+equals(other: OnboardingStatus): boolean"
 
     note: "Immutable status with\nbusiness validation"
   }
 
-  EnrollmentProgress: EnrollmentProgress {
+  OnboardingProgress: OnboardingProgress {
     shape: class
-    label: "<<Value Object>> EnrollmentProgress"
+    label: "<<Value Object>> OnboardingProgress"
 
     # Progress Properties
     completedSteps: "+readonly completedSteps: ProgressStep[]"
@@ -232,7 +232,7 @@ value_objects: Value Objects {
     getNextRequiredStep: "+getNextRequiredStep(): ProgressStep"
     isComplete: "+isComplete(): boolean"
     getEstimatedCompletionDate: "+getEstimatedCompletionDate(): Date"
-    equals: "+equals(other: EnrollmentProgress): boolean"
+    equals: "+equals(other: OnboardingProgress): boolean"
 
     note: "Calculated progress\nwith business rules"
   }
@@ -315,21 +315,21 @@ domain_services: Domain Services {
 
 # Domain Events (Business State Changes)
 domain_events: Domain Events {
-  EnrollmentInitiatedEvent: EnrollmentInitiatedEvent {
+  OnboardingInitiatedEvent: OnboardingInitiatedEvent {
     shape: class
 
-    enrollmentId: "+enrollmentId: EnrollmentId"
+    onboardingId: "+onboardingId: OnboardingId"
     patientId: "+patientId: PatientId"
     programType: "+programType: ProgramType"
     occurredOn: "+occurredOn: Date"
 
-    note: "New enrollment started"
+    note: "New onboarding started"
   }
 
   QualificationCompletedEvent: QualificationCompletedEvent {
     shape: class
 
-    enrollmentId: "+enrollmentId: EnrollmentId"
+    onboardingId: "+onboardingId: OnboardingId"
     isQualified: "+isQualified: boolean"
     reasoning: "+reasoning: string"
     assessedBy: "+assessedBy: UserId"
@@ -341,9 +341,9 @@ domain_events: Domain Events {
   PatientStatusChangedEvent: PatientStatusChangedEvent {
     shape: class
 
-    enrollmentId: "+enrollmentId: EnrollmentId"
-    previousStatus: "+previousStatus: EnrollmentStatusType"
-    newStatus: "+newStatus: EnrollmentStatusType"
+    onboardingId: "+onboardingId: OnboardingId"
+    previousStatus: "+previousStatus: OnboardingStatusType"
+    newStatus: "+newStatus: OnboardingStatusType"
     reason: "+reason: string"
     changedBy: "+changedBy: UserId"
     occurredOn: "+occurredOn: Date"
@@ -354,24 +354,24 @@ domain_events: Domain Events {
 
 # Entity Relationships
 entities.Patient -> value_objects.PatientDemographics: "contains"
-entities.ProgramEnrollment -> entities.Patient: "aggregates"
-entities.ProgramEnrollment -> entities.AuditTrailEntry: "contains collection"
-entities.ProgramEnrollment -> value_objects.EnrollmentStatus: "has current"
-entities.ProgramEnrollment -> value_objects.EnrollmentProgress: "calculates"
-entities.NIVProgramEnrollment -> entities.ProgramEnrollment: "extends"
+entities.ProgramOnboarding -> entities.Patient: "aggregates"
+entities.ProgramOnboarding -> entities.AuditTrailEntry: "contains collection"
+entities.ProgramOnboarding -> value_objects.OnboardingStatus: "has current"
+entities.ProgramOnboarding -> value_objects.OnboardingProgress: "calculates"
+entities.NIVProgramOnboarding -> entities.ProgramOnboarding: "extends"
 
 # Factory Dependencies (Enhanced)
-factories.NIVProgramEnrollmentFactory -> entities.NIVProgramEnrollment: "creates"
-factories.NIVProgramEnrollmentFactory -> domain_services.NIVEligibilityService: "uses for validation"
-factories.NIVProgramEnrollmentFactory -> domain_services.SpecialistAssignmentService: "uses for assignment"
+factories.NIVProgramOnboardingFactory -> entities.NIVProgramOnboarding: "creates"
+factories.NIVProgramOnboardingFactory -> domain_services.NIVEligibilityService: "uses for validation"
+factories.NIVProgramOnboardingFactory -> domain_services.SpecialistAssignmentService: "uses for assignment"
 factories.PatientFactory -> entities.Patient: "creates"
-factories.QualificationAssessmentFactory -> entities.NIVProgramEnrollment: "creates assessments for"
+factories.QualificationAssessmentFactory -> entities.NIVProgramOnboarding: "creates assessments for"
 
 # Domain Service Dependencies
 domain_services.NIVEligibilityService -> entities.Patient: "operates on"
-domain_services.SpecialistAssignmentService -> entities.ProgramEnrollment: "assigns to"
+domain_services.SpecialistAssignmentService -> entities.ProgramOnboarding: "assigns to"
 
 # Domain Events Published By
-entities.ProgramEnrollment -> domain_events.EnrollmentInitiatedEvent: "publishes"
-entities.NIVProgramEnrollment -> domain_events.QualificationCompletedEvent: "publishes"
-entities.ProgramEnrollment -> domain_events.PatientStatusChangedEvent: "publishes"
+entities.ProgramOnboarding -> domain_events.OnboardingInitiatedEvent: "publishes"
+entities.NIVProgramOnboarding -> domain_events.QualificationCompletedEvent: "publishes"
+entities.ProgramOnboarding -> domain_events.PatientStatusChangedEvent: "publishes"
