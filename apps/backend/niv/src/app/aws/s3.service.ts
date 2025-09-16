@@ -75,9 +75,11 @@ export class S3Service {
         expiresIn,
       };
     } catch (error) {
-      this.logger.error(`Failed to generate presigned URL: ${error.message}`);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Failed to generate presigned URL: ${errorMessage}`);
       this.logger.error(`Error details:`, error);
-      throw new Error(`S3 presigned URL generation failed: ${error.message}`);
+      throw new Error(`S3 presigned URL generation failed: ${errorMessage}`);
     }
   }
 
@@ -90,7 +92,9 @@ export class S3Service {
 
       return { success: true, message: `Connected to bucket: ${this.bucket}` };
     } catch (error) {
-      return { success: false, message: error.message };
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      return { success: false, message: errorMessage };
     }
   }
 }

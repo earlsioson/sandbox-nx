@@ -2,14 +2,13 @@
   "name": "backend-reference-e2e",
   "implicitDependencies": ["backend-reference"],
   "targets": {
-    "e2e": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{projectRoot}/test-output/jest/coverage"],
+    "test": {
+      "executor": "@nx/vite:test",
       "options": {
-        "jestConfig": "apps/backend/reference-e2e/jest.config.ts",
+        "config": "apps/backend/reference-e2e/vitest.config.ts",
         "passWithNoTests": true
       },
-      "dependsOn": ["backend-reference:build", "backend-reference:serve"]
+      "dependsOn": ["backend-reference:build"]
     }
   }
 }

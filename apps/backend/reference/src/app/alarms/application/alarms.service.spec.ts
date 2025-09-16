@@ -1,4 +1,6 @@
+// Update apps/backend/reference/src/app/alarms/application/alarms.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AlarmsService } from './alarms.service';
 
 describe('AlarmsService', () => {

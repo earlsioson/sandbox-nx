@@ -1,4 +1,4 @@
 export class CreateAlarmDto {
-  name: string;
-  severity: string;
+  name!: string;
+  severity!: string;
 }
