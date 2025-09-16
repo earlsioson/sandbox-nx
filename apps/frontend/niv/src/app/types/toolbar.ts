@@ -28,6 +28,7 @@ export interface ToolbarContextValue {
   config: ToolbarConfig;
   updateToolbar: (config: Partial<ToolbarConfig>) => void;
   resetToolbar: () => void;
+  setToolbarConfig: (config: ToolbarConfig) => void;
 }
 
 export type UserRole = 'RT' | 'NURSE' | 'ADMIN' | 'DON' | 'MANAGER';

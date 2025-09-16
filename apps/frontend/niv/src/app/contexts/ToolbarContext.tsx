@@ -3,6 +3,7 @@ import {
   ReactNode,
   useCallback,
   useContext,
+  useMemo,
   useReducer,
 } from 'react';
 import {
@@ -44,7 +45,7 @@ const toolbarReducer = (
   }
 };
 
-// Default state
+// Default state - defined outside component to prevent recreation
 const defaultState: ToolbarConfig = {
   breadcrumb: [{ label: 'Home' }],
   actions: [],
@@ -79,28 +80,31 @@ function ToolbarProvider({
 }: ToolbarProviderProps) {
   const [config, dispatch] = useReducer(toolbarReducer, initialConfig);
 
-  // Memoized update function to prevent unnecessary re-renders
+  // Stable callback functions using useCallback with empty dependencies
+  // These functions only depend on dispatch which is stable from useReducer
   const updateToolbar = useCallback((newConfig: Partial<ToolbarConfig>) => {
     dispatch({ type: 'UPDATE_CONFIG', payload: newConfig });
   }, []);
 
-  // Memoized reset function
   const resetToolbar = useCallback(() => {
     dispatch({ type: 'RESET_CONFIG', payload: defaultState });
   }, []);
 
-  // Internal function to set complete config (used by useToolbar hook)
   const setToolbarConfig = useCallback((newConfig: ToolbarConfig) => {
     dispatch({ type: 'SET_CONFIG', payload: newConfig });
   }, []);
 
-  // Memoized context value to prevent unnecessary re-renders
-  const contextValue: ToolbarContextValue = {
-    config,
-    updateToolbar,
-    resetToolbar,
-    setToolbarConfig,
-  };
+  // React 19 pattern: Use useMemo to create stable context value object
+  // This prevents the context value from changing on every render
+  const contextValue = useMemo(
+    (): ToolbarContextValue => ({
+      config,
+      updateToolbar,
+      resetToolbar,
+      setToolbarConfig,
+    }),
+    [config, updateToolbar, resetToolbar, setToolbarConfig]
+  );
 
   return (
     <ToolbarContext.Provider value={contextValue}>
@@ -112,6 +116,7 @@ function ToolbarProvider({
 export { ToolbarProvider };
 
 // Utility function to convert string breadcrumbs to BreadcrumbItem objects
+// Pure function - no dependencies, safe to call anywhere
 export const normalizeBreadcrumb = (
   breadcrumb: (string | BreadcrumbItem)[]
 ): BreadcrumbItem[] => {

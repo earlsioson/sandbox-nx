@@ -34,25 +34,34 @@ export const useToolbar = (): UseToolbarReturn => {
   const { config, updateToolbar, resetToolbar, setToolbarConfig } =
     useToolbarContext();
 
-  // Memoized route matching to avoid recalculation
+  // React 19 pattern: Memoize the pathname to prevent unnecessary recalculations
+  const pathname = location.pathname;
+
+  // React 19 pattern: Memoize route matching with stable dependency
   const matchedRoute = useMemo(() => {
-    return matchRoute(location.pathname);
-  }, [location.pathname]);
+    return matchRoute(pathname);
+  }, [pathname]);
+
+  // React 19 pattern: Memoize params as a stable object
+  // This prevents infinite re-renders caused by params object reference changes
+  const stableParams = useMemo(() => {
+    return params;
+  }, [JSON.stringify(params)]);
 
   // Check if current route is managed by configuration
   const isRouteManaged = matchedRoute !== null;
 
-  // Enhanced breadcrumb with dynamic data injection
+  // React 19 pattern: Enhanced breadcrumb function with stable dependencies
   const enhanceBreadcrumb = useCallback(
     (
       breadcrumb: (string | BreadcrumbItem)[],
-      params: RouteParams
+      routeParams: RouteParams
     ): BreadcrumbItem[] => {
       return normalizeBreadcrumb(breadcrumb).map((item: BreadcrumbItem) => {
         let enhancedLabel = item.label;
 
         // Replace parameter placeholders with actual values
-        Object.entries(params).forEach(([key, value]) => {
+        Object.entries(routeParams).forEach(([key, value]) => {
           if (value) {
             enhancedLabel = enhancedLabel.replace(`{${key}}`, value);
             // Common patterns for patient names, facility names, etc.
@@ -73,69 +82,65 @@ export const useToolbar = (): UseToolbarReturn => {
         };
       });
     },
-    []
+    [] // No dependencies - pure function
   );
 
-  // Get actions for the current route, with dynamic generation support
+  // React 19 pattern: Get actions function with stable dependencies
   const getRouteActions = useCallback(
     (
       routeConfig: typeof defaultToolbarConfig,
-      params: RouteParams
+      routeParams: RouteParams
     ): ToolbarAction[] => {
       // If route has dynamic action generation, use it
       if (routeConfig.getActions) {
-        return routeConfig.getActions(params);
+        // Convert RouteParams to Record<string, string> by filtering out undefined values
+        const cleanParams: Record<string, string> = Object.entries(routeParams)
+          .filter(([, value]) => value !== undefined)
+          .reduce(
+            (acc, [key, value]) => ({ ...acc, [key]: value! }),
+            {} as Record<string, string>
+          );
+
+        return routeConfig.getActions(cleanParams);
       }
 
       // Otherwise use static actions
       return routeConfig.actions;
     },
-    []
+    [] // No dependencies - pure function
   );
 
-  // Effect to update toolbar when route changes
-  useEffect(() => {
+  // React 19 pattern: Memoize the toolbar configuration to prevent unnecessary updates
+  const toolbarConfig = useMemo(() => {
     if (!matchedRoute) {
       // Route not managed by configuration, use default
-      setToolbarConfig({
+      return {
         breadcrumb: normalizeBreadcrumb(defaultToolbarConfig.breadcrumb),
         actions: defaultToolbarConfig.actions,
-      });
-      return;
+      };
     }
 
     const routeConfig = routeToolbarConfig[matchedRoute];
 
     // Build enhanced configuration
-    const enhancedConfig: ToolbarConfig = {
-      breadcrumb: enhanceBreadcrumb(routeConfig.breadcrumb, params),
-      actions: getRouteActions(routeConfig, params),
+    return {
+      breadcrumb: enhanceBreadcrumb(routeConfig.breadcrumb, stableParams),
+      actions: getRouteActions(routeConfig, stableParams),
     };
+  }, [matchedRoute, stableParams, enhanceBreadcrumb, getRouteActions]);
 
-    setToolbarConfig(enhancedConfig);
-  }, [
-    matchedRoute,
-    params,
-    enhanceBreadcrumb,
-    getRouteActions,
-    setToolbarConfig,
-  ]);
+  // React 19 pattern: Effect with stable dependencies
+  useEffect(() => {
+    setToolbarConfig(toolbarConfig);
+  }, [toolbarConfig, setToolbarConfig]);
 
-  // Enhanced update function that preserves route-based config when appropriate
-  const enhancedUpdateToolbar = useCallback(
-    (newConfig: Partial<ToolbarConfig>) => {
-      updateToolbar(newConfig);
-    },
-    [updateToolbar]
-  );
-
-  // Enhanced reset that returns to route-based config if available
+  // React 19 pattern: Enhanced reset that uses memoized values
   const enhancedResetToolbar = useCallback(() => {
     if (matchedRoute) {
       const routeConfig = routeToolbarConfig[matchedRoute];
       const enhancedConfig: ToolbarConfig = {
-        breadcrumb: enhanceBreadcrumb(routeConfig.breadcrumb, params),
-        actions: getRouteActions(routeConfig, params),
+        breadcrumb: enhanceBreadcrumb(routeConfig.breadcrumb, stableParams),
+        actions: getRouteActions(routeConfig, stableParams),
       };
       setToolbarConfig(enhancedConfig);
     } else {
@@ -143,7 +148,7 @@ export const useToolbar = (): UseToolbarReturn => {
     }
   }, [
     matchedRoute,
-    params,
+    stableParams,
     enhanceBreadcrumb,
     getRouteActions,
     setToolbarConfig,
@@ -152,28 +157,34 @@ export const useToolbar = (): UseToolbarReturn => {
 
   return {
     config,
-    updateToolbar: enhancedUpdateToolbar,
+    updateToolbar,
     resetToolbar: enhancedResetToolbar,
     isRouteManaged,
   };
 };
 
 /**
- * Simplified hook for components that just need to update toolbar temporarily
+ * React 19 pattern: Simplified hook for temporary toolbar overrides
  * Automatically resets to route-based config when component unmounts
  */
 export const useToolbarOverride = (overrideConfig: Partial<ToolbarConfig>) => {
   const { updateToolbar, resetToolbar } = useToolbar();
 
+  // React 19 pattern: Memoize the override config to prevent unnecessary effects
+  const stableOverrideConfig = useMemo(
+    () => overrideConfig,
+    [JSON.stringify(overrideConfig)]
+  );
+
   useEffect(() => {
     // Apply override on mount
-    updateToolbar(overrideConfig);
+    updateToolbar(stableOverrideConfig);
 
     // Reset on unmount
     return () => {
       resetToolbar();
     };
-  }, [updateToolbar, resetToolbar, overrideConfig]);
+  }, [updateToolbar, resetToolbar, stableOverrideConfig]);
 };
 
 /**
@@ -183,14 +194,20 @@ export const useToolbarRoute = () => {
   const location = useLocation();
   const params = useParams<RouteParams>();
 
-  const matchedRoute = useMemo(() => {
-    return matchRoute(location.pathname);
-  }, [location.pathname]);
+  const pathname = location.pathname;
+  const stableParams = useMemo(() => params, [JSON.stringify(params)]);
 
-  return {
-    pathname: location.pathname,
-    params,
-    matchedRoute,
-    isManaged: matchedRoute !== null,
-  };
+  const matchedRoute = useMemo(() => {
+    return matchRoute(pathname);
+  }, [pathname]);
+
+  return useMemo(
+    () => ({
+      pathname,
+      params: stableParams,
+      matchedRoute,
+      isManaged: matchedRoute !== null,
+    }),
+    [pathname, stableParams, matchedRoute]
+  );
 };

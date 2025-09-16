@@ -1,4 +1,3 @@
-import { NavigateNext as NavigateNextIcon } from '@mui/icons-material';
 import {
   Box,
   Breadcrumbs,
@@ -11,74 +10,39 @@ import {
 import { memo } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import { useToolbar } from '../../hooks/useToolbar';
-import { BreadcrumbItem, ToolbarAction } from '../../types/toolbar';
 
-// Breadcrumb component optimized for performance
+// Breadcrumb section - memoized for performance
 function BreadcrumbSection() {
   const { config } = useToolbar();
 
-  if (config.breadcrumb.length === 0) {
-    return null;
-  }
-
-  // If only one item, show as simple text
-  if (config.breadcrumb.length === 1) {
-    return (
-      <Typography variant="h6" component="div" noWrap>
-        {config.breadcrumb[0].label}
-      </Typography>
-    );
-  }
-
   return (
-    <Breadcrumbs
-      separator={<NavigateNextIcon fontSize="small" />}
-      aria-label="breadcrumb"
-      sx={{ flexGrow: 1 }}
-    >
-      {config.breadcrumb.map((item: BreadcrumbItem, index: number) => {
+    <Breadcrumbs separator="›" sx={{ fontWeight: 500 }}>
+      {config.breadcrumb.map((item, index) => {
         const isLast = index === config.breadcrumb.length - 1;
 
-        if (isLast) {
-          // Last item is current page - not clickable
+        if (isLast || !item.href) {
           return (
             <Typography
-              key={index}
-              variant="h6"
-              component="div"
-              color="text.primary"
-              sx={{ fontWeight: 'medium' }}
+              key={`${item.label}-${index}`}
+              color={isLast ? 'text.primary' : 'text.secondary'}
+              sx={{ fontWeight: isLast ? 600 : 400 }}
             >
               {item.label}
             </Typography>
           );
         }
 
-        if (item.href) {
-          // Clickable breadcrumb with link
-          return (
-            <Link
-              key={index}
-              component={RouterLink}
-              to={item.href}
-              underline="hover"
-              color="inherit"
-              sx={{ display: 'flex', alignItems: 'center' }}
-            >
-              {item.label}
-            </Link>
-          );
-        }
-
-        // Non-clickable breadcrumb
         return (
-          <Typography
-            key={index}
-            color="text.secondary"
-            sx={{ display: 'flex', alignItems: 'center' }}
+          <Link
+            key={`${item.label}-${index}`}
+            component={RouterLink}
+            to={item.href}
+            underline="hover"
+            color="inherit"
+            sx={{ fontWeight: 400 }}
           >
             {item.label}
-          </Typography>
+          </Link>
         );
       })}
     </Breadcrumbs>
@@ -88,7 +52,7 @@ function BreadcrumbSection() {
 const MemoizedBreadcrumbSection = memo(BreadcrumbSection);
 MemoizedBreadcrumbSection.displayName = 'BreadcrumbSection';
 
-// Actions component optimized for performance
+// Actions section - memoized for performance
 function ActionsSection() {
   const { config } = useToolbar();
 
@@ -97,15 +61,16 @@ function ActionsSection() {
   }
 
   return (
-    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-      {config.actions.map((action: ToolbarAction) => {
+    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      {config.actions.map((action) => {
         const IconComponent = action.icon;
 
         return (
           <Button
             key={action.id}
-            variant={action.variant || 'text'}
+            variant={action.variant || 'contained'}
             color={action.color || 'primary'}
+            size="small"
             onClick={action.onClick}
             disabled={action.disabled}
             startIcon={IconComponent ? <IconComponent /> : undefined}
@@ -149,7 +114,8 @@ MemoizedDebugInfo.displayName = 'DebugInfo';
 
 // Main toolbar component
 function Toolbar() {
-  const { config } = useToolbar();
+  // Fix: Remove unused config variable since it's accessed within memoized components
+  // const { config } = useToolbar(); // This was causing the unused variable warning
 
   return (
     <MuiToolbar
