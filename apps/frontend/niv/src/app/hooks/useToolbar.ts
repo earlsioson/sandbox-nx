@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useToolbarContext } from '../contexts/ToolbarContext';
 import { ToolbarConfig } from '../types/toolbar';
 
@@ -26,6 +26,8 @@ export const useToolbar = (): UseToolbarReturn => {
 /**
  * Hook for pages that need to set toolbar configuration
  * Automatically resets to default when component unmounts
+ *
+ * @param toolbarConfig - The toolbar configuration object (should be memoized)
  */
 export const useToolbarConfig = (toolbarConfig: ToolbarConfig) => {
   const { setToolbarConfig, resetToolbar } = useToolbar();
@@ -42,22 +44,18 @@ export const useToolbarConfig = (toolbarConfig: ToolbarConfig) => {
 };
 
 /**
- * Hook for setting toolbar configuration with cleanup
- * More explicit version of useToolbarConfig
+ * Hook for setting toolbar configuration with explicit control
+ * Use this when you need manual control over when to set/clear toolbar
+ *
+ * @returns Object with stable setToolbar and clearToolbar functions
  */
 export const useToolbarEffect = () => {
   const { setToolbarConfig, resetToolbar } = useToolbar();
 
-  const setToolbar = useCallback(
-    (config: ToolbarConfig) => {
-      setToolbarConfig(config);
-    },
-    [setToolbarConfig]
-  );
-
-  const clearToolbar = useCallback(() => {
-    resetToolbar();
-  }, [resetToolbar]);
-
-  return { setToolbar, clearToolbar };
+  // Return context functions directly - they're already stable
+  // No need for additional useCallback wrappers (anti-pattern)
+  return {
+    setToolbar: setToolbarConfig,
+    clearToolbar: resetToolbar,
+  };
 };

@@ -20,11 +20,13 @@ function PatientDetailPage() {
   const navigate = useNavigate();
   const { setToolbar, clearToolbar } = useToolbarEffect();
 
-  // Fetch patient data
-  const patient = usePatient(patientId!);
+  // Fetch patient data - add null check for patientId
+  const patient = usePatient(patientId || '');
 
   // Set toolbar configuration for this page
   useEffect(() => {
+    if (!patientId) return; // Guard against undefined patientId
+
     setToolbar({
       breadcrumb: [
         { label: 'Home', href: '/' },
@@ -52,7 +54,8 @@ function PatientDetailPage() {
           label: 'Start Onboarding',
           variant: 'contained',
           color: 'primary',
-          onClick: () => navigate(`/patients/${patientId}/onboarding`),
+          onClick: () =>
+            navigate(`/patients/${patientId}/onboarding/assessment`),
         },
       ],
     });
@@ -60,6 +63,16 @@ function PatientDetailPage() {
     // Cleanup when component unmounts
     return () => clearToolbar();
   }, [patient.name, patientId, navigate, setToolbar, clearToolbar]);
+
+  if (!patientId) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h6" color="error">
+          Patient ID not found
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ p: 3 }}>
