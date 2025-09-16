@@ -51,7 +51,7 @@ function ToolbarProvider({
     setConfig(defaultConfig);
   }, []);
 
-  // React 19 pattern: Use useMemo to create stable context value object
+  // Use useMemo to create stable context value object
   const contextValue = useMemo(
     (): ToolbarContextValue => ({
       config,

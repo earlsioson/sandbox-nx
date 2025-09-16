@@ -114,7 +114,9 @@ function Layout({ children }: LayoutProps) {
                   </ListItemIcon>
                   <ListItemText
                     primary="Patient Onboarding"
-                    primaryTypographyProps={{ fontSize: 14 }}
+                    slotProps={{
+                      primary: { fontSize: 14 },
+                    }}
                   />
                 </ListItemButton>
               </ListItem>

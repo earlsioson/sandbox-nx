@@ -10,7 +10,7 @@ interface UseToolbarReturn {
 }
 
 /**
- * Simple toolbar hook that provides clean toolbar management
+ * Simple toolbar hook that provides toolbar management
  * Pages explicitly set their toolbar configuration
  */
 export const useToolbar = (): UseToolbarReturn => {
