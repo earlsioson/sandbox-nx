@@ -2,7 +2,6 @@ import {
   Box,
   Breadcrumbs,
   Button,
-  Chip,
   Link,
   Toolbar as MuiToolbar,
   Typography,
@@ -14,6 +13,10 @@ import { useToolbar } from '../../hooks/useToolbar';
 // Breadcrumb section - memoized for performance
 function BreadcrumbSection() {
   const { config } = useToolbar();
+
+  if (config.breadcrumb.length === 0) {
+    return null;
+  }
 
   return (
     <Breadcrumbs separator="›" sx={{ fontWeight: 500 }}>
@@ -90,33 +93,8 @@ function ActionsSection() {
 const MemoizedActionsSection = memo(ActionsSection);
 MemoizedActionsSection.displayName = 'ActionsSection';
 
-// Debug component to show route management status (development only)
-function DebugInfo() {
-  const { isRouteManaged } = useToolbar();
-
-  // Only show in development
-  if (process.env.NODE_ENV !== 'development') {
-    return null;
-  }
-
-  return (
-    <Chip
-      label={isRouteManaged ? 'Route Managed' : 'Manual'}
-      size="small"
-      color={isRouteManaged ? 'success' : 'default'}
-      sx={{ ml: 1 }}
-    />
-  );
-}
-
-const MemoizedDebugInfo = memo(DebugInfo);
-MemoizedDebugInfo.displayName = 'DebugInfo';
-
 // Main toolbar component
 function Toolbar() {
-  // Fix: Remove unused config variable since it's accessed within memoized components
-  // const { config } = useToolbar(); // This was causing the unused variable warning
-
   return (
     <MuiToolbar
       sx={{
@@ -130,7 +108,6 @@ function Toolbar() {
       {/* Left side - Breadcrumbs */}
       <Box sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
         <MemoizedBreadcrumbSection />
-        <MemoizedDebugInfo />
       </Box>
 
       {/* Right side - Actions */}

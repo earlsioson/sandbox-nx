@@ -90,44 +90,47 @@ function Layout({ children }: LayoutProps) {
                   alt="Centara"
                   sx={{ height: 32 }}
                 />
-                <Typography
-                  variant="subtitle1"
-                  sx={{ color: 'primary.contrastText' }}
-                >
-                  NIV Tracking
+                <Typography variant="subtitle2" sx={{ mt: 1, fontWeight: 600 }}>
+                  NIV Onboarding
                 </Typography>
               </Box>
             </MuiToolbar>
 
-            <Divider />
+            <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.2)' }} />
 
             {/* Navigation Menu */}
-            <List>
+            <List sx={{ flexGrow: 1, px: 1 }}>
               <ListItem disablePadding>
-                <ListItemButton>
-                  <ListItemIcon sx={{ color: 'primary.contrastText' }}>
+                <ListItemButton
+                  sx={{
+                    borderRadius: 1,
+                    '&:hover': {
+                      bgcolor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                >
+                  <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
                     <ChecklistIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Onboarding" />
+                  <ListItemText
+                    primary="Patient Onboarding"
+                    primaryTypographyProps={{ fontSize: 14 }}
+                  />
                 </ListItemButton>
               </ListItem>
             </List>
           </Drawer>
 
-          {/* Main Content Area */}
+          {/* Main Content */}
           <Box
             component="main"
             sx={{
               flexGrow: 1,
               bgcolor: 'background.default',
-              p: 3,
               minHeight: '100vh',
+              pt: '64px', // Account for fixed toolbar
             }}
           >
-            {/* Toolbar spacer */}
-            <MuiToolbar />
-
-            {/* Page Content */}
             {children}
           </Box>
         </Box>

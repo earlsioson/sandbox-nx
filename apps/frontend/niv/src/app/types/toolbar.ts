@@ -18,17 +18,10 @@ export interface ToolbarConfig {
   actions: ToolbarAction[];
 }
 
-export interface RouteToolbarConfig {
-  breadcrumb: (string | BreadcrumbItem)[];
-  actions: ToolbarAction[];
-  getActions?: (params: Record<string, string>) => ToolbarAction[];
-}
-
 export interface ToolbarContextValue {
   config: ToolbarConfig;
-  updateToolbar: (config: Partial<ToolbarConfig>) => void;
-  resetToolbar: () => void;
   setToolbarConfig: (config: ToolbarConfig) => void;
+  resetToolbar: () => void;
 }
 
 export type UserRole = 'RT' | 'NURSE' | 'ADMIN' | 'DON' | 'MANAGER';
