@@ -1,6 +1,8 @@
+// apps/backend/niv/src/app/onboarding/infrastructure/orm/repositories/onboarding.repository.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ExceptionTranslator } from '../../../../shared/application/services/exception-translator.service';
 import { OnboardingRepository } from '../../../application/ports/onboarding.repository';
 import {
   NivOnboarding,
@@ -32,28 +34,63 @@ export class OrmOnboardingRepository implements OnboardingRepository {
   async findAll(): Promise<NivOnboarding[]> {
     this.logger.log('🔍 ORM: Finding all onboardings');
 
-    const entities = await this.onboardingEntityRepository.find();
-    return entities.map((entity) => OnboardingMapper.toDomain(entity));
+    try {
+      const entities = await this.onboardingEntityRepository.find();
+      return entities.map((entity) => OnboardingMapper.toDomain(entity));
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `❌ Error finding all onboardings: ${errorMessage}`,
+        errorStack
+      );
+      throw new Error(`Failed to find onboardings: ${errorMessage}`);
+    }
   }
 
   async findById(id: string): Promise<NivOnboarding | null> {
     this.logger.log(`🔍 ORM: Finding onboarding by ID: ${id}`);
 
-    const entity = await this.onboardingEntityRepository.findOne({
-      where: { id },
-    });
+    try {
+      const entity = await this.onboardingEntityRepository.findOne({
+        where: { id },
+      });
 
-    return entity ? OnboardingMapper.toDomain(entity) : null;
+      return entity ? OnboardingMapper.toDomain(entity) : null;
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `❌ Error finding onboarding ${id}: ${errorMessage}`,
+        errorStack
+      );
+      throw new Error(`Failed to find onboarding ${id}: ${errorMessage}`);
+    }
   }
 
   async findByPatientId(patientId: string): Promise<NivOnboarding | null> {
     this.logger.log(`🔍 ORM: Finding onboarding by patient ID: ${patientId}`);
 
-    const entity = await this.onboardingEntityRepository.findOne({
-      where: { patientId },
-    });
+    try {
+      const entity = await this.onboardingEntityRepository.findOne({
+        where: { patientId },
+      });
 
-    return entity ? OnboardingMapper.toDomain(entity) : null;
+      return entity ? OnboardingMapper.toDomain(entity) : null;
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `❌ Error finding onboarding by patient ${patientId}: ${errorMessage}`,
+        errorStack
+      );
+      throw new Error(
+        `Failed to find onboarding for patient ${patientId}: ${errorMessage}`
+      );
+    }
   }
 
   async findByFacilityId(facilityId: string): Promise<NivOnboarding[]> {
@@ -61,23 +98,49 @@ export class OrmOnboardingRepository implements OnboardingRepository {
       `🔍 ORM: Finding onboardings by facility ID: ${facilityId}`
     );
 
-    const entities = await this.onboardingEntityRepository.find({
-      where: { facilityId },
-    });
+    try {
+      const entities = await this.onboardingEntityRepository.find({
+        where: { facilityId },
+      });
 
-    return entities.map((entity) => OnboardingMapper.toDomain(entity));
+      return entities.map((entity) => OnboardingMapper.toDomain(entity));
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `❌ Error finding onboardings by facility ${facilityId}: ${errorMessage}`,
+        errorStack
+      );
+      throw new Error(
+        `Failed to find onboardings for facility ${facilityId}: ${errorMessage}`
+      );
+    }
   }
 
   async save(onboarding: NivOnboarding): Promise<NivOnboarding> {
     this.logger.log(`💾 ORM: Saving onboarding: ${onboarding.id}`);
 
-    const persistenceModel = OnboardingMapper.toPersistence(onboarding);
-    const savedEntity = await this.onboardingEntityRepository.save(
-      persistenceModel
-    );
+    try {
+      const persistenceModel = OnboardingMapper.toPersistence(onboarding);
+      const savedEntity = await this.onboardingEntityRepository.save(
+        persistenceModel
+      );
 
-    this.logger.log(`✅ ORM: Onboarding saved: ${savedEntity.id}`);
-    return OnboardingMapper.toDomain(savedEntity);
+      this.logger.log(`✅ ORM: Onboarding saved: ${savedEntity.id}`);
+      return OnboardingMapper.toDomain(savedEntity);
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `❌ Error saving onboarding ${onboarding.id}: ${errorMessage}`,
+        errorStack
+      );
+      throw new Error(
+        `Failed to save onboarding ${onboarding.id}: ${errorMessage}`
+      );
+    }
   }
 
   // ========== PATIENT DATA METHODS (PCC INTEGRATION) ==========
@@ -100,60 +163,68 @@ export class OrmOnboardingRepository implements OnboardingRepository {
 
         if (cacheAge < cacheMaxAge) {
           return OnboardingMapper.patientToDomain(cachedPatient);
-        } else {
-          this.logger.log(
-            `🔄 Cache expired for patient ${patientId}, refreshing from PCC`
-          );
         }
+
+        this.logger.log(`🔄 Cache expired, refreshing from PCC: ${patientId}`);
       }
 
       // Get fresh data from PCC
-      const pccPatient = await this.pccPatientRepository.findPatientById(
-        patientId
-      );
-      if (pccPatient) {
-        // Update local cache
-        await this.cachePatientLocally(pccPatient);
-        this.logger.log(`✅ Patient found via PCC: ${patientId}`);
-        return pccPatient;
-      }
-
-      this.logger.log(`❌ Patient not found: ${patientId}`);
-      return null;
-    } catch (error) {
-      this.logger.error(
-        `❌ Error finding patient ${patientId}:`,
-        error.message
-      );
-
-      // Fallback to cached data if PCC fails
-      const cachedPatient = await this.patientEntityRepository.findOne({
-        where: { id: patientId },
-      });
-
-      if (cachedPatient) {
-        this.logger.warn(
-          `⚠️ PCC failed, using cached data for patient ${patientId}`
+      try {
+        const pccPatient = await this.pccPatientRepository.findPatientById(
+          patientId
         );
-        return OnboardingMapper.patientToDomain(cachedPatient);
-      }
 
-      throw error;
+        // Cache the updated patient data
+        await this.cachePatientLocally(pccPatient);
+
+        this.logger.log(`📋 Found patient from PCC: ${patientId}`);
+        return pccPatient;
+      } catch (error) {
+        const errorMessage = ExceptionTranslator.getMessage(error);
+
+        if (cachedPatient) {
+          this.logger.warn(
+            `⚠️ PCC failed but using cached data for patient ${patientId}: ${errorMessage}`
+          );
+          return OnboardingMapper.patientToDomain(cachedPatient);
+        }
+
+        this.logger.warn(
+          `⚠️ PCC lookup failed for patient ${patientId}: ${errorMessage}`
+        );
+        return null;
+      }
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `❌ Error finding patient ${patientId}: ${errorMessage}`,
+        errorStack
+      );
+      throw new Error(`Failed to find patient ${patientId}: ${errorMessage}`);
     }
   }
 
   async findPatientsByFacility(facilityId: string): Promise<Patient[]> {
-    this.logger.log(`🔍 ORM: Finding patients for facility: ${facilityId}`);
+    this.logger.log(`🔍 ORM: Finding patients by facility: ${facilityId}`);
 
     try {
-      // Get cached patients for facility
-      const cachedPatients = await this.patientEntityRepository.find({
-        where: { facilityId },
-      });
-
-      const localPatients = cachedPatients.map((entity) =>
-        OnboardingMapper.patientToDomain(entity)
-      );
+      // Get local cached patients
+      let localPatients: Patient[] = [];
+      try {
+        const cachedEntities = await this.patientEntityRepository.find({
+          where: { facilityId },
+        });
+        localPatients = cachedEntities.map((entity) =>
+          OnboardingMapper.patientToDomain(entity)
+        );
+      } catch (error) {
+        const errorMessage = ExceptionTranslator.getMessage(error);
+        this.logger.warn(
+          `⚠️ Local patient cache lookup failed for facility ${facilityId}: ${errorMessage}`
+        );
+      }
 
       // Get fresh data from PCC
       let pccPatients: Patient[] = [];
@@ -167,9 +238,9 @@ export class OrmOnboardingRepository implements OnboardingRepository {
           await this.cachePatientLocally(patient);
         }
       } catch (error) {
+        const errorMessage = ExceptionTranslator.getMessage(error);
         this.logger.warn(
-          `⚠️ PCC failed for facility ${facilityId}, using cached data:`,
-          error.message
+          `⚠️ PCC failed for facility ${facilityId}, using cached data: ${errorMessage}`
         );
       }
 
@@ -181,11 +252,16 @@ export class OrmOnboardingRepository implements OnboardingRepository {
       );
       return allPatients;
     } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
       this.logger.error(
-        `❌ Error finding patients for facility ${facilityId}:`,
-        error.message
+        `❌ Error finding patients for facility ${facilityId}: ${errorMessage}`,
+        errorStack
       );
-      throw error;
+      throw new Error(
+        `Failed to find patients for facility ${facilityId}: ${errorMessage}`
+      );
     }
   }
 
@@ -204,25 +280,39 @@ export class OrmOnboardingRepository implements OnboardingRepository {
       this.logger.log(`✅ Patient clinical data refreshed: ${patientId}`);
       return refreshedPatient;
     } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
       this.logger.error(
-        `❌ Failed to refresh patient data ${patientId}:`,
-        error.message
+        `❌ Failed to refresh patient data ${patientId}: ${errorMessage}`,
+        errorStack
       );
       throw new Error(
-        `Failed to refresh patient clinical data: ${error.message}`
+        `Failed to refresh patient clinical data for ${patientId}: ${errorMessage}`
       );
     }
   }
 
-  // ========== QUALIFICATION CRITERIA METHODS ==========
+  // ========== QUALIFICATION CRITERIA (REFERENCE DATA) ==========
 
   async getQualificationCriteria(): Promise<QualificationCriteria[]> {
     this.logger.log('🔍 ORM: Getting qualification criteria');
 
-    const entities = await this.qualificationCriteriaRepository.find();
-    return entities.map((entity) =>
-      OnboardingMapper.qualificationCriteriaToDomain(entity)
-    );
+    try {
+      const entities = await this.qualificationCriteriaRepository.find();
+      return entities.map((entity) =>
+        OnboardingMapper.qualificationCriteriaToDomain(entity)
+      );
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `❌ Error getting qualification criteria: ${errorMessage}`,
+        errorStack
+      );
+      throw new Error(`Failed to get qualification criteria: ${errorMessage}`);
+    }
   }
 
   // ========== PRIVATE HELPER METHODS ==========
@@ -230,17 +320,15 @@ export class OrmOnboardingRepository implements OnboardingRepository {
   private async cachePatientLocally(patient: Patient): Promise<void> {
     try {
       const persistenceModel = OnboardingMapper.patientToPersistence(patient);
+      persistenceModel.updatedAt = new Date(); // Update cache timestamp
 
-      // Upsert: Insert or update if exists
       await this.patientEntityRepository.save(persistenceModel);
-
-      this.logger.log(`💾 Cached patient locally: ${patient.id}`);
+      this.logger.log(`💾 Patient cached locally: ${patient.id}`);
     } catch (error) {
-      this.logger.error(
-        `❌ Failed to cache patient ${patient.id}:`,
-        error.message
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      this.logger.warn(
+        `⚠️ Failed to cache patient locally ${patient.id}: ${errorMessage}`
       );
-      // Don't throw - caching failure shouldn't break the flow
     }
   }
 
@@ -251,14 +339,10 @@ export class OrmOnboardingRepository implements OnboardingRepository {
     const patientMap = new Map<string, Patient>();
 
     // Add local patients first
-    localPatients.forEach((patient) => {
-      patientMap.set(patient.id, patient);
-    });
+    localPatients.forEach((patient) => patientMap.set(patient.id, patient));
 
-    // Override/add with PCC data (PCC is source of truth for clinical data)
-    pccPatients.forEach((patient) => {
-      patientMap.set(patient.id, patient);
-    });
+    // PCC data takes precedence (newer/more accurate)
+    pccPatients.forEach((patient) => patientMap.set(patient.id, patient));
 
     return Array.from(patientMap.values());
   }

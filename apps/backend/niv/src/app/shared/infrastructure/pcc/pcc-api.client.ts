@@ -1,8 +1,9 @@
-// shared/infrastructure/pcc/pcc-api.client.ts
+// apps/backend/niv/src/app/shared/infrastructure/pcc/pcc-api.client.ts
 import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import * as fs from 'fs';
 import * as https from 'https';
+import { ExceptionTranslator } from '../../application/services/exception-translator.service';
 import { PccAuthService } from './pcc-auth.service';
 import { PccConfigService } from './pcc-config.service';
 
@@ -42,15 +43,27 @@ export class PccAPIClient {
 
       return response.data;
     } catch (error) {
-      this.logger.error(`❌ PCC API Failed: ${endpoint}`, {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      });
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      const logContext = {
+        endpoint,
+        isNetworkError,
+        isAuthError,
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        statusText: axios.isAxiosError(error)
+          ? error.response?.statusText
+          : undefined,
+        responseData: axios.isAxiosError(error)
+          ? error.response?.data
+          : undefined,
+      };
+
+      this.logger.error(`❌ PCC API Failed: ${endpoint}`, logContext);
 
       // If unauthorized, clear cached token and retry once
-      if (error.response?.status === 401) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         this.logger.log('🔄 Token expired, retrying with new token...');
         this.authService.clearCachedToken();
 
@@ -69,17 +82,18 @@ export class PccAPIClient {
           this.logger.log(`✅ PCC API Retry Success: ${endpoint}`);
           return retryResponse.data;
         } catch (retryError) {
+          const retryErrorMessage = ExceptionTranslator.getMessage(retryError);
           this.logger.error(
             `❌ PCC API Retry Failed: ${endpoint}`,
-            retryError.message
+            retryErrorMessage
           );
           throw new Error(
-            `PCC API call failed after retry: ${retryError.message}`
+            `PCC API call failed after retry: ${retryErrorMessage}`
           );
         }
       }
 
-      throw new Error(`PCC API call failed: ${error.message}`);
+      throw new Error(`PCC API call failed: ${errorMessage}`);
     }
   }
 
@@ -105,14 +119,26 @@ export class PccAPIClient {
 
       return response.data;
     } catch (error) {
-      this.logger.error(`❌ PCC API POST Failed: ${endpoint}`, {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      });
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
 
-      throw new Error(`PCC API POST call failed: ${error.message}`);
+      const logContext = {
+        endpoint,
+        isNetworkError,
+        isAuthError,
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        statusText: axios.isAxiosError(error)
+          ? error.response?.statusText
+          : undefined,
+        responseData: axios.isAxiosError(error)
+          ? error.response?.data
+          : undefined,
+      };
+
+      this.logger.error(`❌ PCC API POST Failed: ${endpoint}`, logContext);
+
+      throw new Error(`PCC API POST call failed: ${errorMessage}`);
     }
   }
 
@@ -135,8 +161,18 @@ export class PccAPIClient {
       this.logger.log(`✅ PCC API PUT Success: ${endpoint}`);
       return response.data;
     } catch (error) {
-      this.logger.error(`❌ PCC API PUT Failed: ${endpoint}`, error.message);
-      throw new Error(`PCC API PUT call failed: ${error.message}`);
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      const logContext = {
+        endpoint,
+        isNetworkError,
+        isAuthError,
+      };
+
+      this.logger.error(`❌ PCC API PUT Failed: ${endpoint}`, logContext);
+      throw new Error(`PCC API PUT call failed: ${errorMessage}`);
     }
   }
 
@@ -151,8 +187,9 @@ export class PccAPIClient {
         rejectUnauthorized: true,
       });
     } catch (error) {
-      this.logger.error('❌ Failed to load mTLS certificates:', error.message);
-      throw new Error(`Certificate loading failed: ${error.message}`);
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      this.logger.error(`❌ Failed to load mTLS certificates: ${errorMessage}`);
+      throw new Error(`Certificate loading failed: ${errorMessage}`);
     }
   }
 }

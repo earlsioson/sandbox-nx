@@ -1,8 +1,9 @@
-// apps/api/src/app/aws/s3.service.ts
+// apps/backend/niv/src/app/aws/s3.service.ts
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { fromIni } from '@aws-sdk/credential-providers';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger } from '@nestjs/common';
+import { ExceptionTranslator } from '../shared/application/services/exception-translator.service';
 
 export interface PresignedUrlRequest {
   key: string;
@@ -75,10 +76,13 @@ export class S3Service {
         expiresIn,
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to generate presigned URL: ${errorMessage}`);
-      this.logger.error(`Error details:`, error);
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const errorStack = ExceptionTranslator.getStack(error);
+
+      this.logger.error(
+        `Failed to generate presigned URL: ${errorMessage}`,
+        errorStack
+      );
       throw new Error(`S3 presigned URL generation failed: ${errorMessage}`);
     }
   }
@@ -92,8 +96,7 @@ export class S3Service {
 
       return { success: true, message: `Connected to bucket: ${this.bucket}` };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      const errorMessage = ExceptionTranslator.getMessage(error);
       return { success: false, message: errorMessage };
     }
   }

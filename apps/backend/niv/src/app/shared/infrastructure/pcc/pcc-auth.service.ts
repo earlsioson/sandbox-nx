@@ -1,8 +1,9 @@
-// shared/infrastructure/pcc/pcc-auth.service.ts
+// apps/backend/niv/src/app/shared/infrastructure/pcc/pcc-auth.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as https from 'https';
+import { ExceptionTranslator } from '../../application/services/exception-translator.service';
 import { PccConfigService } from './pcc-config.service';
 
 export interface PccTokenResponse {
@@ -54,20 +55,32 @@ export class PccAuthService {
 
       return this.cachedToken;
     } catch (error) {
-      this.logger.error('❌ PCC authentication failed:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      });
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
 
-      throw new Error(`PCC authentication failed: ${error.message}`);
+      const logContext = {
+        isNetworkError,
+        isAuthError,
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        statusText: axios.isAxiosError(error)
+          ? error.response?.statusText
+          : undefined,
+        responseData: axios.isAxiosError(error)
+          ? error.response?.data
+          : undefined,
+      };
+
+      this.logger.error('❌ PCC authentication failed:', logContext);
+
+      throw new Error(`PCC authentication failed: ${errorMessage}`);
     }
   }
 
   clearCachedToken(): void {
     this.cachedToken = null;
     this.tokenExpiresAt = 0;
+    this.logger.log('🔄 PCC token cache cleared');
   }
 
   private createMTLSAgent(): https.Agent {
@@ -88,8 +101,9 @@ export class PccAuthService {
         rejectUnauthorized: true,
       });
     } catch (error) {
-      this.logger.error('❌ Failed to load mTLS certificates:', error.message);
-      throw new Error(`Certificate loading failed: ${error.message}`);
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      this.logger.error(`❌ Failed to load mTLS certificates: ${errorMessage}`);
+      throw new Error(`Certificate loading failed: ${errorMessage}`);
     }
   }
 }

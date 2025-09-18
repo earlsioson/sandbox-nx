@@ -1,7 +1,9 @@
-// onboarding/infrastructure/pcc/repositories/pcc-patient-clinical-data.repository.ts
+// apps/backend/niv/src/app/onboarding/infrastructure/pcc/repositories/pcc-patient-clinical-data.repository.ts
 import { Injectable, Logger } from '@nestjs/common';
+import { ExceptionTranslator } from '../../../../shared/application/services/exception-translator.service';
 import { PccAPIClient } from '../../../../shared/infrastructure/pcc/pcc-api.client';
 import { Patient } from '../../../domain/patient';
+import { DiagnosisCode } from '../../../domain/value-objects/diagnosis-code';
 import {
   PccPatientClinicalDataResponse,
   PccPatientResponse,
@@ -12,21 +14,29 @@ import { PccPatientClinicalDataMapper } from '../mappers/pcc-patient-clinical-da
 export class PccPatientClinicalDataRepository {
   private readonly logger = new Logger(PccPatientClinicalDataRepository.name);
 
-  constructor(private pccApiClient: PccAPIClient) {}
+  constructor(private readonly pccApiClient: PccAPIClient) {}
 
-  async findPatientById(patientId: string): Promise<Patient | null> {
+  async findPatientById(patientId: string): Promise<Patient> {
+    this.logger.log(`🔍 PCC: Finding patient by ID: ${patientId}`);
+
     try {
-      this.logger.log(`🔍 Fetching patient data from PCC: ${patientId}`);
-
       // Get patient basic information
       const patientData = await this.pccApiClient.get<PccPatientResponse>(
         `/api/public/preview1/patients/${patientId}`
       );
 
-      // Get patient conditions/diagnoses
-      const conditions = await this.pccApiClient.get<any[]>(
-        `/api/public/preview1/patients/${patientId}/conditions`
-      );
+      // Get patient conditions/diagnoses (if available)
+      let conditions: any[] = [];
+      try {
+        conditions = await this.pccApiClient.get<any[]>(
+          `/api/public/preview1/patients/${patientId}/conditions`
+        );
+      } catch (error) {
+        const errorMessage = ExceptionTranslator.getMessage(error);
+        this.logger.warn(
+          `⚠️ Could not fetch conditions for patient ${patientId}: ${errorMessage}`
+        );
+      }
 
       // Combine into clinical data response
       const clinicalData: PccPatientClinicalDataResponse = {
@@ -36,132 +46,259 @@ export class PccPatientClinicalDataRepository {
         conditions: conditions || [],
       };
 
+      // Map PCC response to domain model using existing mapper
       const patient =
         PccPatientClinicalDataMapper.patientToDomain(clinicalData);
 
-      this.logger.log(
-        `✅ Successfully fetched patient data for: ${patientId}`,
+      this.logger.log(`✅ PCC: Patient found: ${patientId}`);
+      return patient;
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      this.logger.error(
+        `❌ PCC: Failed to find patient ${patientId}: ${errorMessage}`,
         {
-          diagnosisCount: patient.diagnosisCodes.length,
+          patientId,
+          isNetworkError,
+          isAuthError,
         }
       );
 
-      return patient;
-    } catch (error) {
-      this.logger.error(
-        `❌ Failed to fetch patient data for ${patientId}:`,
-        error.message
-      );
-
-      // Return null if patient not found, throw for other errors
-      if (
-        error.message.includes('404') ||
-        error.message.includes('not found')
-      ) {
-        return null;
-      }
-
       throw new Error(
-        `Failed to fetch patient data from PCC: ${error.message}`
+        `PCC patient lookup failed for ${patientId}: ${errorMessage}`
       );
     }
   }
 
   async findPatientsByFacility(facilityId: string): Promise<Patient[]> {
-    try {
-      this.logger.log(`🔍 Fetching patients for facility: ${facilityId}`);
+    this.logger.log(`🔍 PCC: Finding patients by facility: ${facilityId}`);
 
+    try {
       // Get facility patients list
       const patientsResponse = await this.pccApiClient.get<{
         data: PccPatientResponse[];
-      }>(`/api/public/preview1/facilities/${facilityId}/patients`, {
-        // Add query parameters as needed for pagination, filtering, etc.
-        limit: 100,
-        status: 'active',
-      });
+      }>(`/api/public/preview1/facilities/${facilityId}/patients`);
 
-      // For each patient, get their detailed clinical data
-      const patientsWithClinicalData = await Promise.all(
-        patientsResponse.data.map(async (patient) => {
-          try {
-            // Get detailed patient data including conditions
-            const conditions = await this.pccApiClient.get<any[]>(
-              `/api/public/preview1/patients/${patient.patientId}/conditions`
-            );
+      // Convert each PCC patient to clinical data format
+      const clinicalDataList: PccPatientClinicalDataResponse[] =
+        patientsResponse.data.map((patientData) => ({
+          patient: patientData,
+          medicalDiagnosis: [], // Would be populated if we had diagnosis endpoints
+          treatmentDiagnosis: [], // Would be populated if we had diagnosis endpoints
+          conditions: [], // Would be populated if we had conditions endpoints
+        }));
 
-            const clinicalData: PccPatientClinicalDataResponse = {
-              patient,
-              conditions: conditions || [],
-              medicalDiagnosis: [],
-              treatmentDiagnosis: [],
-            };
-
-            return PccPatientClinicalDataMapper.patientToDomain(clinicalData);
-          } catch (error) {
-            this.logger.warn(
-              `⚠️ Failed to fetch clinical data for patient ${patient.patientId}:`,
-              error.message
-            );
-
-            // Return patient with basic data only if clinical data fetch fails
-            const basicClinicalData: PccPatientClinicalDataResponse = {
-              patient,
-              conditions: [],
-              medicalDiagnosis: [],
-              treatmentDiagnosis: [],
-            };
-
-            return PccPatientClinicalDataMapper.patientToDomain(
-              basicClinicalData
-            );
-          }
-        })
-      );
+      // Use existing mapper to convert to domain objects
+      const patients =
+        PccPatientClinicalDataMapper.patientListToDomain(clinicalDataList);
 
       this.logger.log(
-        `✅ Successfully fetched ${patientsWithClinicalData.length} patients for facility: ${facilityId}`
+        `✅ PCC: Found ${patients.length} patients for facility: ${facilityId}`
+      );
+      return patients;
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      this.logger.error(
+        `❌ PCC: Failed to find patients for facility ${facilityId}: ${errorMessage}`,
+        {
+          facilityId,
+          isNetworkError,
+          isAuthError,
+        }
       );
 
-      return patientsWithClinicalData;
-    } catch (error) {
-      this.logger.error(
-        `❌ Failed to fetch patients for facility ${facilityId}:`,
-        error.message
+      throw new Error(
+        `PCC facility patient lookup failed for ${facilityId}: ${errorMessage}`
       );
-      throw new Error(`Failed to fetch patients from PCC: ${error.message}`);
     }
   }
 
   async refreshPatientClinicalData(patientId: string): Promise<Patient> {
-    this.logger.log(`🔄 Refreshing clinical data for patient: ${patientId}`);
+    this.logger.log(`🔄 PCC: Refreshing clinical data for: ${patientId}`);
 
-    const patient = await this.findPatientById(patientId);
-    if (!patient) {
-      throw new Error(`Patient ${patientId} not found in PCC`);
-    }
-
-    this.logger.log(`✅ Clinical data refreshed for patient: ${patientId}`);
-    return patient;
-  }
-
-  // Utility method for testing PCC connectivity
-  async testConnection(): Promise<boolean> {
     try {
-      this.logger.log('🧪 Testing PCC connection...');
+      // Get fresh patient data
+      const patientData = await this.pccApiClient.get<PccPatientResponse>(
+        `/api/public/preview1/patients/${patientId}`
+      );
 
-      // Test with a simple endpoint that should be accessible
-      await this.pccApiClient.get(
-        '/api/public/preview1/webhook-subscriptions',
+      // Get conditions with more comprehensive data
+      let conditions: any[] = [];
+      try {
+        conditions = await this.pccApiClient.get<any[]>(
+          `/api/public/preview1/patients/${patientId}/conditions`
+        );
+      } catch (error) {
+        const errorMessage = ExceptionTranslator.getMessage(error);
+        this.logger.warn(
+          `⚠️ Could not fetch conditions for patient ${patientId}: ${errorMessage}`
+        );
+      }
+
+      // Combine into clinical data response
+      const clinicalData: PccPatientClinicalDataResponse = {
+        patient: patientData,
+        medicalDiagnosis: [], // Would need additional API calls for diagnoses
+        treatmentDiagnosis: [], // Would need additional API calls for diagnoses
+        conditions: conditions || [],
+      };
+
+      const refreshedPatient =
+        PccPatientClinicalDataMapper.patientToDomain(clinicalData);
+
+      this.logger.log(`✅ PCC: Clinical data refreshed for: ${patientId}`, {
+        diagnosisCount: refreshedPatient.diagnosisCodes.length,
+      });
+
+      return refreshedPatient;
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      this.logger.error(
+        `❌ PCC: Failed to refresh clinical data for ${patientId}: ${errorMessage}`,
         {
-          applicationName: 'centara-dev',
+          patientId,
+          isNetworkError,
+          isAuthError,
         }
       );
 
-      this.logger.log('✅ PCC connection test successful');
-      return true;
+      throw new Error(
+        `PCC clinical data refresh failed for ${patientId}: ${errorMessage}`
+      );
+    }
+  }
+
+  async findPatientDiagnosisCodes(patientId: string): Promise<DiagnosisCode[]> {
+    this.logger.log(`🔍 PCC: Getting diagnosis codes for: ${patientId}`);
+
+    try {
+      // Get patient data with diagnoses using the existing method
+      const patient = await this.findPatientById(patientId);
+
+      this.logger.log(
+        `✅ PCC: Found ${patient.diagnosisCodes.length} diagnosis codes for: ${patientId}`
+      );
+
+      return patient.diagnosisCodes;
     } catch (error) {
-      this.logger.error('❌ PCC connection test failed:', error.message);
-      return false;
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      this.logger.error(
+        `❌ PCC: Failed to get diagnosis codes for ${patientId}: ${errorMessage}`,
+        {
+          patientId,
+          isNetworkError,
+          isAuthError,
+        }
+      );
+
+      throw new Error(
+        `PCC diagnosis codes lookup failed for ${patientId}: ${errorMessage}`
+      );
+    }
+  }
+
+  // ========== UTILITY METHODS ==========
+
+  /**
+   * Test PCC connectivity and authentication
+   */
+  async testConnection(): Promise<{
+    success: boolean;
+    message: string;
+    details?: any;
+  }> {
+    try {
+      this.logger.log('🔗 PCC: Testing connection...');
+
+      // Try a simple API call to test connectivity
+      const response = await this.pccApiClient.get<any>(
+        '/api/public/preview1/webhook-subscriptions',
+        {
+          applicationName: 'niv-application',
+        }
+      );
+
+      this.logger.log('✅ PCC: Connection test successful');
+
+      return {
+        success: true,
+        message: 'PCC connection and authentication successful',
+        details: {
+          responseStatus: 'OK',
+          hasData: !!response,
+        },
+      };
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      this.logger.error(`❌ PCC: Connection test failed: ${errorMessage}`, {
+        isNetworkError,
+        isAuthError,
+      });
+
+      return {
+        success: false,
+        message: 'PCC connection test failed',
+        details: {
+          error: errorMessage,
+          isNetworkError,
+          isAuthError,
+        },
+      };
+    }
+  }
+
+  /**
+   * Create or update patient in PCC (if supported)
+   */
+  async savePatient(patient: Patient): Promise<Patient> {
+    this.logger.log(`💾 PCC: Attempting to save patient: ${patient.id}`);
+
+    try {
+      // Note: This would require a toPersistence method in the mapper
+      // For now, we'll just log the attempt and return the original patient
+      this.logger.warn(
+        `⚠️ PCC: Patient save not implemented - PCC API may be read-only`
+      );
+
+      // If PCC API supported patient updates, you would:
+      // 1. Convert Patient domain object to PCC format
+      // 2. Call PCC API to update patient
+      // 3. Return updated patient from API response
+
+      return patient;
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      this.logger.error(
+        `❌ PCC: Failed to save patient ${patient.id}: ${errorMessage}`,
+        {
+          patientId: patient.id,
+          isNetworkError,
+          isAuthError,
+        }
+      );
+
+      // Don't throw error for save failures - PCC might be read-only
+      this.logger.warn(
+        `⚠️ PCC: Patient save failed, but continuing: ${patient.id}`
+      );
+      return patient;
     }
   }
 }

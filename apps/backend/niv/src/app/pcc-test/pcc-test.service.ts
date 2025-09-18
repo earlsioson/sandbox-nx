@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as https from 'https';
+import { ExceptionTranslator } from '../shared/application/services/exception-translator.service';
 
 @Injectable()
 export class PccTestService {
@@ -50,20 +51,33 @@ export class PccTestService {
         },
       };
     } catch (error) {
-      this.logger.error('❌ OAuth Failed:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      });
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      const logContext = {
+        isNetworkError,
+        isAuthError,
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        statusText: axios.isAxiosError(error)
+          ? error.response?.statusText
+          : undefined,
+        responseData: axios.isAxiosError(error)
+          ? error.response?.data
+          : undefined,
+      };
+
+      this.logger.error('❌ OAuth Failed:', logContext);
 
       return {
         success: false,
         error: {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message,
+          message: errorMessage,
+          isNetworkError,
+          isAuthError,
+          status: logContext.status,
+          statusText: logContext.statusText,
+          responseData: logContext.responseData,
         },
       };
     }
@@ -107,20 +121,33 @@ export class PccTestService {
         data: response.data,
       };
     } catch (error) {
-      this.logger.error('❌ API Call Failed:', {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      });
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      const isNetworkError = ExceptionTranslator.isNetworkError(error);
+      const isAuthError = ExceptionTranslator.isAuthenticationError(error);
+
+      const logContext = {
+        isNetworkError,
+        isAuthError,
+        status: axios.isAxiosError(error) ? error.response?.status : undefined,
+        statusText: axios.isAxiosError(error)
+          ? error.response?.statusText
+          : undefined,
+        responseData: axios.isAxiosError(error)
+          ? error.response?.data
+          : undefined,
+      };
+
+      this.logger.error('❌ API Call Failed:', logContext);
 
       return {
         success: false,
         error: {
-          status: error.response?.status,
-          statusText: error.response?.statusText,
-          data: error.response?.data,
-          message: error.message,
+          message: errorMessage,
+          isNetworkError,
+          isAuthError,
+          status: logContext.status,
+          statusText: logContext.statusText,
+          responseData: logContext.responseData,
         },
       };
     }
@@ -134,19 +161,24 @@ export class PccTestService {
     );
     const httpsAgent = this.createMTLSAgent();
 
-    const response = await axios.post(
-      'https://connect2.pointclickcare.com/auth/token',
-      'grant_type=client_credentials',
-      {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        httpsAgent,
-      }
-    );
+    try {
+      const response = await axios.post(
+        'https://connect2.pointclickcare.com/auth/token',
+        'grant_type=client_credentials',
+        {
+          headers: {
+            Authorization: `Basic ${credentials}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          httpsAgent,
+        }
+      );
 
-    return response.data.access_token;
+      return response.data.access_token;
+    } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      throw new Error(`Failed to get full token: ${errorMessage}`);
+    }
   }
 
   private createMTLSAgent(): https.Agent {
@@ -175,14 +207,15 @@ export class PccTestService {
         rejectUnauthorized: true,
       });
     } catch (error) {
-      this.logger.error('❌ Failed to load certificates:', error.message);
-      throw new Error(`Certificate loading failed: ${error.message}`);
+      const errorMessage = ExceptionTranslator.getMessage(error);
+      this.logger.error(`❌ Failed to load certificates: ${errorMessage}`);
+      throw new Error(`Certificate loading failed: ${errorMessage}`);
     }
   }
 
   async testCertificates(): Promise<any> {
     try {
-      const _agent = this.createMTLSAgent();
+      this.createMTLSAgent();
       this.logger.log('✅ Certificates loaded successfully');
 
       return {
@@ -190,9 +223,11 @@ export class PccTestService {
         message: 'Certificates loaded and HTTPS agent created successfully',
       };
     } catch (error) {
+      const errorMessage = ExceptionTranslator.getMessage(error);
+
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
       };
     }
   }
