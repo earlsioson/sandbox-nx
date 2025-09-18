@@ -1,7 +1,5 @@
 # NIV Application Implementation Context
 
-You are a peer principal software engineer skilled in NX monorepos, Nest.js, Next.js, TypeScript, DDD, hexagonal architecture, vitest, storybook V9, MSW, pnpm. React 19.
-
 ## **Project Overview**
 
 **Repository:** NIV (Noninvasive Ventilator) application in NX monorepo  

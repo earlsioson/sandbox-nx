@@ -1,5 +1,6 @@
 import AddIcon from '@mui/icons-material/Add';
 import ListIcon from '@mui/icons-material/List';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import {
   Box,
   Button,
@@ -21,12 +22,20 @@ function OnboardingLandingPage() {
       breadcrumb: [{ label: 'Home', href: '/' }, { label: 'NIV Onboarding' }],
       actions: [
         {
-          id: 'add-patient',
-          label: 'Add Patient',
+          id: 'import-patients',
+          label: 'Import Patients',
+          icon: PersonAddIcon,
+          variant: 'text',
+          color: 'secondary',
+          onClick: () => navigate('/onboardings/patients/import'),
+        },
+        {
+          id: 'add-onboarding-patient',
+          label: 'Add Onboarding Patient',
           icon: AddIcon,
           variant: 'contained',
-          color: 'primary',
-          onClick: () => navigate('/onboarding/create'),
+          color: 'success',
+          onClick: () => navigate('/onboardings/create'),
         },
       ],
     });
