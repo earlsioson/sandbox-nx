@@ -5,10 +5,10 @@ import * as fs from 'fs';
 import * as https from 'https';
 
 @Injectable()
-export class PCCTestService {
-  private readonly logger = new Logger(PCCTestService.name);
+export class PccTestService {
+  private readonly logger = new Logger(PccTestService.name);
 
-  async testPCCAuth(): Promise<any> {
+  async testPccAuth(): Promise<any> {
     const clientId = process.env.PCC_CLIENT_ID || 'your-client-id';
     const clientSecret = process.env.PCC_CLIENT_SECRET || 'your-client-secret';
 
@@ -72,7 +72,7 @@ export class PCCTestService {
   async testPCCAPI(): Promise<any> {
     try {
       // First get a token
-      const authResult = await this.testPCCAuth();
+      const authResult = await this.testPccAuth();
       if (!authResult.success) {
         return { success: false, error: 'Failed to get auth token' };
       }

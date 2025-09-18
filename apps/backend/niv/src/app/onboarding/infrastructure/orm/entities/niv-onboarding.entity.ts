@@ -8,7 +8,7 @@ import {
 import { OnboardingState } from '../../../domain/onboarding-state.interface';
 
 @Entity('niv_onboardings')
-export class NIVOnboardingEntity implements OnboardingState {
+export class NivOnboardingEntity implements OnboardingState {
   @PrimaryColumn('uuid')
   id!: string;
 

@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { NIVOnboardingFactory } from '../domain/factories/niv-onboarding.factory';
-import { NIVOnboarding } from '../domain/niv-onboarding';
+import { NivOnboardingFactory } from '../domain/factories/niv-onboarding.factory';
+import { NivOnboarding } from '../domain/niv-onboarding';
 import { Patient } from '../domain/patient';
-import { ClinicalQualificationService } from '../domain/services/clinical-qualification.service';
 import { OnboardingRepository } from './ports/onboarding.repository';
 
 export interface PatientWithQualifications {
   patient: Patient;
-  onboarding: NIVOnboarding | null;
+  onboarding: NivOnboarding | null;
   hasQualifications: boolean;
   qualificationTypes: string[];
 }
@@ -16,9 +15,9 @@ export interface PatientWithQualifications {
 export class OnboardingService {
   constructor(
     private readonly onboardingRepository: OnboardingRepository,
-    private readonly onboardingFactory: NIVOnboardingFactory,
-    private readonly clinicalQualificationService: ClinicalQualificationService
-  ) {}
+    private readonly onboardingFactory: NivOnboardingFactory
+  ) // NO LONGER NEED: ClinicalQualificationService - logic moved to aggregate
+  {}
 
   async getPatientsWithQualifications(
     facilityId?: string
@@ -37,68 +36,92 @@ export class OnboardingService {
       ? await this.onboardingRepository.findByFacilityId(facilityId)
       : await this.onboardingRepository.findAll();
 
-    // Map patients to their qualifications
-    return Promise.all(
-      patients.map(async (patient) => {
-        // Find existing onboarding for this patient
-        const existingOnboarding = onboardings.find(
-          (o) => o.patientId === patient.id
-        );
-
-        // Assess clinical qualifications
-        const qualifications =
-          this.clinicalQualificationService.assessQualifications(
-            patient.diagnosisCodes,
-            qualificationCriteria
-          );
-
-        return {
-          patient,
-          onboarding: existingOnboarding || null,
-          hasQualifications: qualifications.hasAnyQualification(),
-          qualificationTypes: qualifications.getQualificationTypes(),
-        };
-      })
+    // Create onboarding map for quick lookup
+    const onboardingsByPatientId = new Map(
+      onboardings.map((onboarding) => [onboarding.patientId, onboarding])
     );
+
+    // Process each patient
+    const results: PatientWithQualifications[] = [];
+
+    for (const patient of patients) {
+      let onboarding = onboardingsByPatientId.get(patient.id);
+
+      // Create new onboarding if doesn't exist
+      if (!onboarding) {
+        onboarding = this.onboardingFactory.create(
+          patient.id,
+          patient.demographics.facilityId
+        );
+      }
+
+      // REFACTORED: Use aggregate method instead of service
+      onboarding.assessClinicalQualifications(patient, qualificationCriteria);
+
+      // Save updated onboarding (with new qualifications)
+      const savedOnboarding = await this.onboardingRepository.save(onboarding);
+
+      const qualifications = savedOnboarding.getQualificationsObject();
+
+      results.push({
+        patient,
+        onboarding: savedOnboarding,
+        hasQualifications: qualifications.hasAnyQualification(),
+        qualificationTypes: qualifications.getQualificationTypes(),
+      });
+    }
+
+    return results;
   }
 
-  async getPatientWithQualifications(
-    patientId: string
-  ): Promise<PatientWithQualifications | null> {
-    const patient = await this.onboardingRepository.findPatientById(patientId);
-    if (!patient) return null;
-
-    const onboarding = await this.onboardingRepository.findByPatientId(
+  async createOnboarding(
+    patientId: string,
+    facilityId: string,
+    assignedSpecialistId?: string
+  ): Promise<NivOnboarding> {
+    // Check if onboarding already exists
+    const existingOnboarding = await this.onboardingRepository.findByPatientId(
       patientId
     );
+    if (existingOnboarding) {
+      throw new Error(`Onboarding already exists for patient ${patientId}`);
+    }
+
+    // Get patient data for qualification assessment
+    const patient = await this.onboardingRepository.findPatientById(patientId);
+    if (!patient) {
+      throw new Error(`Patient not found: ${patientId}`);
+    }
+
+    // Create new onboarding
+    const onboarding = this.onboardingFactory.create(
+      patientId,
+      facilityId,
+      assignedSpecialistId
+    );
+
+    // Assess qualifications using aggregate method
     const qualificationCriteria =
       await this.onboardingRepository.getQualificationCriteria();
+    onboarding.assessClinicalQualifications(patient, qualificationCriteria);
 
-    const qualifications =
-      this.clinicalQualificationService.assessQualifications(
-        patient.diagnosisCodes,
-        qualificationCriteria
-      );
-
-    return {
-      patient,
-      onboarding,
-      hasQualifications: qualifications.hasAnyQualification(),
-      qualificationTypes: qualifications.getQualificationTypes(),
-    };
+    // Save and return
+    return await this.onboardingRepository.save(onboarding);
   }
 
-  async refreshPatientData(patientId: string): Promise<Patient> {
-    return this.onboardingRepository.refreshPatientClinicalData(patientId);
+  async getOnboardingById(id: string): Promise<NivOnboarding | null> {
+    return await this.onboardingRepository.findById(id);
   }
 
-  async findAllOnboardings(): Promise<NIVOnboarding[]> {
-    return this.onboardingRepository.findAll();
+  async getOnboardingByPatientId(
+    patientId: string
+  ): Promise<NivOnboarding | null> {
+    return await this.onboardingRepository.findByPatientId(patientId);
   }
 
   private async getAllPatients(): Promise<Patient[]> {
-    // This would need to be implemented based on business requirements
-    // For now, return empty array as we typically work with specific facilities
-    return [];
+    // This would need to be implemented based on how you want to get all patients
+    // For now, throwing an error to indicate this needs implementation
+    throw new Error('Getting all patients across facilities not implemented');
   }
 }

@@ -3,10 +3,10 @@ import { randomUUID } from 'crypto';
 import { Patient } from '../../../domain/patient';
 import { DiagnosisCode } from '../../../domain/value-objects/diagnosis-code';
 import { PatientDemographics } from '../../../domain/value-objects/patient-demographics';
-import { PCCPatientClinicalDataResponse } from '../entities/pcc-patient-response.entity';
+import { PccPatientClinicalDataResponse } from '../entities/pcc-patient-response.entity';
 
-export class PCCPatientClinicalDataMapper {
-  static patientToDomain(pccData: PCCPatientClinicalDataResponse): Patient {
+export class PccPatientClinicalDataMapper {
+  static patientToDomain(pccData: PccPatientClinicalDataResponse): Patient {
     const patientId = randomUUID(); // Generate local patient ID
 
     const demographics = new PatientDemographics(
@@ -23,13 +23,13 @@ export class PCCPatientClinicalDataMapper {
   }
 
   static patientListToDomain(
-    pccDataList: PCCPatientClinicalDataResponse[]
+    pccDataList: PccPatientClinicalDataResponse[]
   ): Patient[] {
     return pccDataList.map((pccData) => this.patientToDomain(pccData));
   }
 
   private static extractDiagnosisCodes(
-    pccData: PCCPatientClinicalDataResponse
+    pccData: PccPatientClinicalDataResponse
   ): DiagnosisCode[] {
     const diagnosisCodes: DiagnosisCode[] = [];
 
@@ -100,7 +100,7 @@ export class PCCPatientClinicalDataMapper {
   static createMockPatientData(
     patientId: string,
     facilityId: string
-  ): PCCPatientClinicalDataResponse {
+  ): PccPatientClinicalDataResponse {
     // This method is useful for testing or when PCC data is not available
     return {
       patient: {

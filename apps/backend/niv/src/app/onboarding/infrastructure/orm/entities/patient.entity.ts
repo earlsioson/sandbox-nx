@@ -14,7 +14,7 @@ export interface PatientState {
   medicalRecordNumber: string;
   facilityId: string;
   pccPatientId: string | null;
-  diagnosisCodes: string; // JSON array of diagnosis codes
+  diagnosisCodes: string; // JSON string of diagnosis codes
   createdAt: Date;
   updatedAt: Date;
 }

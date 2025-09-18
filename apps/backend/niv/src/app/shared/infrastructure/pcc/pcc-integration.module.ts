@@ -1,11 +1,11 @@
 // shared/infrastructure/pcc/pcc-integration.module.ts
 import { Module } from '@nestjs/common';
-import { PCCAPIClient } from './pcc-api.client';
-import { PCCAuthService } from './pcc-auth.service';
-import { PCCConfigService } from './pcc-config.service';
+import { PccAPIClient } from './pcc-api.client';
+import { PccAuthService } from './pcc-auth.service';
+import { PccConfigService } from './pcc-config.service';
 
 @Module({
-  providers: [PCCConfigService, PCCAuthService, PCCAPIClient],
-  exports: [PCCAPIClient, PCCAuthService, PCCConfigService],
+  providers: [PccConfigService, PccAuthService, PccAPIClient],
+  exports: [PccAPIClient, PccAuthService, PccConfigService],
 })
-export class PCCIntegrationModule {}
+export class PccIntegrationModule {}

@@ -3,22 +3,22 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as https from 'https';
-import { PCCConfigService } from './pcc-config.service';
+import { PccConfigService } from './pcc-config.service';
 
-export interface PCCTokenResponse {
+export interface PccTokenResponse {
   access_token: string;
   token_type: string;
   expires_in: number;
 }
 
 @Injectable()
-export class PCCAuthService {
-  private readonly logger = new Logger(PCCAuthService.name);
+export class PccAuthService {
+  private readonly logger = new Logger(PccAuthService.name);
   private cachedToken: string | null = null;
   private tokenExpiresAt: number = 0;
   private httpsAgent: https.Agent;
 
-  constructor(private configService: PCCConfigService) {
+  constructor(private configService: PccConfigService) {
     this.httpsAgent = this.createMTLSAgent();
   }
 
@@ -31,7 +31,7 @@ export class PCCAuthService {
     this.logger.log('🔐 Requesting new PCC access token...');
 
     try {
-      const response = await axios.post<PCCTokenResponse>(
+      const response = await axios.post<PccTokenResponse>(
         `${this.configService.baseUrl}/auth/token`,
         'grant_type=client_credentials',
         {

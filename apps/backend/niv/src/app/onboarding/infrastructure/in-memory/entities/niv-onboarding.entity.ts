@@ -1,6 +1,6 @@
 import { OnboardingState } from '../../../domain/onboarding-state.interface';
 
-export class NIVOnboardingEntity implements OnboardingState {
+export class NivOnboardingEntity implements OnboardingState {
   id!: string;
   patientId!: string;
   facilityId!: string;

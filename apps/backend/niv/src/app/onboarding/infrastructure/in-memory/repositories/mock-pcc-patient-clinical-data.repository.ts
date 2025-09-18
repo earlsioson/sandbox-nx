@@ -5,9 +5,9 @@ import { DiagnosisCode } from '../../../domain/value-objects/diagnosis-code';
 import { PatientDemographics } from '../../../domain/value-objects/patient-demographics';
 
 @Injectable()
-export class MockPCCPatientClinicalDataRepository {
+export class MockPccPatientClinicalDataRepository {
   private readonly logger = new Logger(
-    MockPCCPatientClinicalDataRepository.name
+    MockPccPatientClinicalDataRepository.name
   );
 
   // Mock PCC patient data for testing

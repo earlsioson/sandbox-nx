@@ -1,55 +1,56 @@
-// onboarding/infrastructure/in-memory/repositories/onboarding.repository.ts (Updated)
 import { Injectable, Logger } from '@nestjs/common';
 import { OnboardingRepository } from '../../../application/ports/onboarding.repository';
-import { NIVOnboarding } from '../../../domain/niv-onboarding';
+import {
+  NivOnboarding,
+  QualificationCriteria,
+} from '../../../domain/niv-onboarding';
 import { Patient } from '../../../domain/patient';
-import { QualificationCriteria } from '../../../domain/services/clinical-qualification.service';
 import { DiagnosisCodeQualificationEntity } from '../entities/diagnosis-code-qualification.entity';
-import { NIVOnboardingEntity } from '../entities/niv-onboarding.entity';
+import { NivOnboardingEntity } from '../entities/niv-onboarding.entity';
 import { PatientEntity } from '../entities/patient.entity';
 import { OnboardingMapper } from '../mappers/onboarding.mapper';
-import { MockPCCPatientClinicalDataRepository } from './mock-pcc-patient-clinical-data.repository';
+import { MockPccPatientClinicalDataRepository } from './mock-pcc-patient-clinical-data.repository';
 
 @Injectable()
 export class InMemoryOnboardingRepository implements OnboardingRepository {
   private readonly logger = new Logger(InMemoryOnboardingRepository.name);
-  private readonly onboardings = new Map<string, NIVOnboardingEntity>();
+  private readonly onboardings = new Map<string, NivOnboardingEntity>();
   private readonly patients = new Map<string, PatientEntity>();
   private readonly qualificationCriteria: DiagnosisCodeQualificationEntity[] =
     [];
 
-  constructor(private mockPccRepository: MockPCCPatientClinicalDataRepository) {
+  constructor(private mockPccRepository: MockPccPatientClinicalDataRepository) {
     this.seedQualificationCriteria();
     this.seedBasicPatientData();
   }
 
   // ========== LOCAL WORKFLOW STATE METHODS ==========
 
-  async findAll(): Promise<NIVOnboarding[]> {
+  async findAll(): Promise<NivOnboarding[]> {
     const entities = Array.from(this.onboardings.values());
     return entities.map((entity) => OnboardingMapper.toDomain(entity));
   }
 
-  async findById(id: string): Promise<NIVOnboarding | null> {
+  async findById(id: string): Promise<NivOnboarding | null> {
     const entity = this.onboardings.get(id);
     return entity ? OnboardingMapper.toDomain(entity) : null;
   }
 
-  async findByPatientId(patientId: string): Promise<NIVOnboarding | null> {
+  async findByPatientId(patientId: string): Promise<NivOnboarding | null> {
     const entity = Array.from(this.onboardings.values()).find(
       (o) => o.patientId === patientId
     );
     return entity ? OnboardingMapper.toDomain(entity) : null;
   }
 
-  async findByFacilityId(facilityId: string): Promise<NIVOnboarding[]> {
+  async findByFacilityId(facilityId: string): Promise<NivOnboarding[]> {
     const entities = Array.from(this.onboardings.values()).filter(
       (o) => o.facilityId === facilityId
     );
     return entities.map((entity) => OnboardingMapper.toDomain(entity));
   }
 
-  async save(onboarding: NIVOnboarding): Promise<NIVOnboarding> {
+  async save(onboarding: NivOnboarding): Promise<NivOnboarding> {
     const persistenceModel = OnboardingMapper.toPersistence(onboarding);
     this.onboardings.set(persistenceModel.id, persistenceModel);
 
@@ -57,31 +58,27 @@ export class InMemoryOnboardingRepository implements OnboardingRepository {
     return OnboardingMapper.toDomain(newEntity);
   }
 
-  // ========== PATIENT CLINICAL DATA METHODS (MOCK PCC INTEGRATION) ==========
+  // ========== PATIENT DATA METHODS (PCC INTEGRATION) ==========
 
   async findPatientById(patientId: string): Promise<Patient | null> {
-    try {
-      this.logger.log(`🔍 In-memory: Looking up patient ${patientId}`);
+    this.logger.log(`🔍 In-memory: Finding patient by ID: ${patientId}`);
 
-      // First check local cache
+    try {
+      // Check local cache first
       const localPatient = this.patients.get(patientId);
       if (localPatient) {
-        this.logger.log(`📋 Found patient in local cache: ${patientId}`);
+        this.logger.log(`📋 Found cached patient: ${patientId}`);
         return OnboardingMapper.patientToDomain(localPatient);
       }
 
-      // Fetch from mock PCC
-      this.logger.log(`🧪 Fetching from mock PCC: ${patientId}`);
+      // Get from mock PCC
       const pccPatient = await this.mockPccRepository.findPatientById(
         patientId
       );
-
       if (pccPatient) {
         // Cache locally
         this.cachePatientLocally(pccPatient);
-        this.logger.log(
-          `✅ Patient fetched from mock PCC and cached: ${patientId}`
-        );
+        this.logger.log(`✅ Patient found via Mock PCC: ${patientId}`);
         return pccPatient;
       }
 
@@ -92,29 +89,19 @@ export class InMemoryOnboardingRepository implements OnboardingRepository {
         `❌ Error finding patient ${patientId}:`,
         error.message
       );
-
-      // Fallback to local cache
-      const localPatient = this.patients.get(patientId);
-      if (localPatient) {
-        this.logger.log(
-          `⚠️ Mock PCC failed, returning cached patient: ${patientId}`
-        );
-        return OnboardingMapper.patientToDomain(localPatient);
-      }
-
       throw error;
     }
   }
 
   async findPatientsByFacility(facilityId: string): Promise<Patient[]> {
-    try {
-      this.logger.log(
-        `🔍 In-memory: Looking up patients for facility ${facilityId}`
-      );
+    this.logger.log(
+      `🔍 In-memory: Finding patients for facility: ${facilityId}`
+    );
 
-      // Get from local cache
+    try {
+      // Get cached patients for facility
       const localPatients = Array.from(this.patients.values())
-        .filter((p) => p.facilityId === facilityId)
+        .filter((entity) => entity.facilityId === facilityId)
         .map((entity) => OnboardingMapper.patientToDomain(entity));
 
       // Get from mock PCC
@@ -185,9 +172,9 @@ export class InMemoryOnboardingRepository implements OnboardingRepository {
   // ========== PRIVATE HELPER METHODS ==========
 
   private cachePatientLocally(patient: Patient): void {
-    const patientEntity = OnboardingMapper.patientToPersistence(patient);
-    this.patients.set(patient.id, patientEntity);
-    this.logger.log(`💾 Patient cached locally: ${patient.id}`);
+    const persistenceModel = OnboardingMapper.patientToPersistence(patient);
+    this.patients.set(patient.id, persistenceModel);
+    this.logger.log(`💾 Cached patient locally: ${patient.id}`);
   }
 
   private mergePatientData(
@@ -198,118 +185,77 @@ export class InMemoryOnboardingRepository implements OnboardingRepository {
 
     // Add local patients first
     localPatients.forEach((patient) => {
-      patientMap.set(patient.demographics.medicalRecordNumber, patient);
+      patientMap.set(patient.id, patient);
     });
 
-    // Overlay with PCC data (fresher data takes priority)
+    // Override/add with PCC data (PCC is source of truth for clinical data)
     pccPatients.forEach((patient) => {
-      patientMap.set(patient.demographics.medicalRecordNumber, patient);
+      patientMap.set(patient.id, patient);
     });
 
     return Array.from(patientMap.values());
   }
 
+  // ========== SEED DATA METHODS ==========
+
   private seedQualificationCriteria(): void {
-    // Same qualification criteria as before
-    const criteria = [
+    // COPD qualification codes
+    const copdCodes = [
       {
-        id: 1,
-        icd10Code: 'J44.0',
-        qualificationType: 'COPD' as const,
-        isQualifying: true,
+        code: 'J44.0',
         description: 'COPD with acute lower respiratory infection',
-        notes: null,
       },
+      { code: 'J44.1', description: 'COPD with acute exacerbation' },
+      { code: 'J44.9', description: 'COPD, unspecified' },
+      { code: 'J42', description: 'Unspecified chronic bronchitis' },
+    ];
+
+    // ARF qualification codes
+    const arfCodes = [
       {
-        id: 2,
-        icd10Code: 'J44.1',
-        qualificationType: 'COPD' as const,
-        isQualifying: true,
-        description: 'COPD with acute exacerbation',
-        notes: null,
+        code: 'J96.00',
+        description:
+          'Acute respiratory failure, unspecified whether with hypoxia or hypercapnia',
       },
+      { code: 'J96.01', description: 'Acute respiratory failure with hypoxia' },
       {
-        id: 3,
-        icd10Code: 'J96.01',
-        qualificationType: 'ARF' as const,
-        isQualifying: true,
-        description: 'Acute respiratory failure with hypoxia',
-        notes: null,
-      },
-      {
-        id: 4,
-        icd10Code: 'J96.02',
-        qualificationType: 'ARF' as const,
-        isQualifying: true,
+        code: 'J96.02',
         description: 'Acute respiratory failure with hypercapnia',
-        notes: null,
-      },
-      {
-        id: 5,
-        icd10Code: 'J96.11',
-        qualificationType: 'ARF' as const,
-        isQualifying: true,
-        description: 'Chronic respiratory failure with hypoxia',
-        notes: null,
-      },
-      {
-        id: 6,
-        icd10Code: 'G12.21',
-        qualificationType: 'NMD' as const,
-        isQualifying: true,
-        description: 'Amyotrophic lateral sclerosis',
-        notes: null,
-      },
-      {
-        id: 7,
-        icd10Code: 'G70.00',
-        qualificationType: 'NMD' as const,
-        isQualifying: true,
-        description: 'Myasthenia gravis',
-        notes: null,
-      },
-      {
-        id: 8,
-        icd10Code: 'G71.0',
-        qualificationType: 'NMD' as const,
-        isQualifying: true,
-        description: 'Muscular dystrophy',
-        notes: null,
       },
     ];
 
-    criteria.forEach((c) => this.qualificationCriteria.push(c));
+    // NMD qualification codes
+    const nmdCodes = [
+      { code: 'G12.21', description: 'Amyotrophic lateral sclerosis' },
+      {
+        code: 'G70.00',
+        description: 'Myasthenia gravis without (acute) exacerbation',
+      },
+      { code: 'G71.0', description: 'Muscular dystrophy' },
+    ];
+
+    // Build qualification criteria
+    [
+      ...copdCodes.map((c) => ({ ...c, type: 'COPD' })),
+      ...arfCodes.map((c) => ({ ...c, type: 'ARF' })),
+      ...nmdCodes.map((c) => ({ ...c, type: 'NMD' })),
+    ].forEach(({ code, description, type }) => {
+      const entity = new DiagnosisCodeQualificationEntity();
+      entity.icd10Code = code;
+      entity.qualificationType = type as any;
+      entity.isQualifying = true;
+      entity.description = description;
+      this.qualificationCriteria.push(entity);
+    });
+
+    this.logger.log(
+      `📋 Seeded ${this.qualificationCriteria.length} qualification criteria`
+    );
   }
 
   private seedBasicPatientData(): void {
-    // Minimal patient data - detailed clinical data comes from mock PCC
-    const basicPatients = [
-      {
-        id: 'mock-patient-1',
-        firstName: 'John',
-        lastName: 'Smith',
-        dateOfBirth: new Date('1945-03-15'),
-        medicalRecordNumber: 'MR-001',
-        facilityId: 'facility-1',
-        pccPatientId: 'pcc-001',
-        diagnosisCodes: '[]', // Will be populated from mock PCC
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-      {
-        id: 'mock-patient-2',
-        firstName: 'Mary',
-        lastName: 'Johnson',
-        dateOfBirth: new Date('1960-07-22'),
-        medicalRecordNumber: 'MR-002',
-        facilityId: 'facility-1',
-        pccPatientId: 'pcc-002',
-        diagnosisCodes: '[]',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-
-    basicPatients.forEach((p) => this.patients.set(p.id, p));
+    // Add some basic patient data for testing
+    // This will be supplemented by mock PCC data
+    this.logger.log(`💾 Basic patient data seeded for testing`);
   }
 }

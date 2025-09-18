@@ -1,17 +1,19 @@
-import { NIVOnboarding } from '../../../domain/niv-onboarding';
+import {
+  NivOnboarding,
+  QualificationCriteria,
+} from '../../../domain/niv-onboarding';
 import { Patient } from '../../../domain/patient';
-import { QualificationCriteria } from '../../../domain/services/clinical-qualification.service';
 import { ClinicalQualifications } from '../../../domain/value-objects/clinical-qualifications';
 import { DiagnosisCode } from '../../../domain/value-objects/diagnosis-code';
 import { OnboardingStatus } from '../../../domain/value-objects/onboarding-status';
 import { PatientDemographics } from '../../../domain/value-objects/patient-demographics';
 import { DiagnosisCodeQualificationEntity } from '../entities/diagnosis-code-qualification.entity';
-import { NIVOnboardingEntity } from '../entities/niv-onboarding.entity';
+import { NivOnboardingEntity } from '../entities/niv-onboarding.entity';
 import { PatientEntity } from '../entities/patient.entity';
 
 export class OnboardingMapper {
-  static toDomain(entity: NIVOnboardingEntity): NIVOnboarding {
-    return new NIVOnboarding(
+  static toDomain(entity: NivOnboardingEntity): NivOnboarding {
+    return new NivOnboarding(
       entity.id,
       entity.patientId,
       entity.facilityId,
@@ -23,8 +25,8 @@ export class OnboardingMapper {
     );
   }
 
-  static toPersistence(onboarding: NIVOnboarding): NIVOnboardingEntity {
-    const entity = new NIVOnboardingEntity();
+  static toPersistence(onboarding: NivOnboarding): NivOnboardingEntity {
+    const entity = new NivOnboardingEntity();
 
     entity.id = onboarding.id;
     entity.patientId = onboarding.patientId;

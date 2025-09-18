@@ -2,20 +2,20 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { OnboardingRepository } from '../../application/ports/onboarding.repository';
-import { PCCIntegrationModule } from '../pcc/pcc-integration.module';
+import { PccIntegrationModule } from '../pcc/pcc-integration.module';
 import { DiagnosisCodeQualificationEntity } from './entities/diagnosis-code-qualification.entity';
-import { NIVOnboardingEntity } from './entities/niv-onboarding.entity';
+import { NivOnboardingEntity } from './entities/niv-onboarding.entity';
 import { PatientEntity } from './entities/patient.entity';
 import { OrmOnboardingRepository } from './repositories/onboarding.repository';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      NIVOnboardingEntity,
+      NivOnboardingEntity,
       PatientEntity,
       DiagnosisCodeQualificationEntity,
     ]),
-    PCCIntegrationModule, // Import PCC integration
+    PccIntegrationModule, // Import PCC integration
   ],
   providers: [
     {

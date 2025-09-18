@@ -1,11 +1,11 @@
 // onboarding/infrastructure/pcc/pcc-integration.module.ts
 import { Module } from '@nestjs/common';
-import { PCCIntegrationModule as SharedPCCIntegrationModule } from '../../../shared/infrastructure/pcc/pcc-integration.module';
-import { PCCPatientClinicalDataRepository } from './repositories/pcc-patient-clinical-data.repository';
+import { PccIntegrationModule as SharedPccIntegrationModule } from '../../../shared/infrastructure/pcc/pcc-integration.module';
+import { PccPatientClinicalDataRepository } from './repositories/pcc-patient-clinical-data.repository';
 
 @Module({
-  imports: [SharedPCCIntegrationModule],
-  providers: [PCCPatientClinicalDataRepository],
-  exports: [PCCPatientClinicalDataRepository],
+  imports: [SharedPccIntegrationModule],
+  providers: [PccPatientClinicalDataRepository],
+  exports: [PccPatientClinicalDataRepository],
 })
-export class PCCIntegrationModule {}
+export class PccIntegrationModule {}

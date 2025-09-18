@@ -1,22 +1,19 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 
 @Entity('diagnosis_code_qualifications')
 export class DiagnosisCodeQualificationEntity {
-  @PrimaryGeneratedColumn()
-  id!: number;
-
-  @Column({ name: 'icd10_code' })
+  @PrimaryColumn({ name: 'icd10_code' })
   icd10Code!: string;
 
   @Column({ name: 'qualification_type' })
   qualificationType!: 'COPD' | 'ARF' | 'NMD' | 'TRD';
 
-  @Column({ name: 'is_qualifying', default: true })
+  @Column({ name: 'is_qualifying', type: 'boolean' })
   isQualifying!: boolean;
 
   @Column({ nullable: true })
-  description!: string | null;
+  description?: string;
 
   @Column({ nullable: true })
-  notes!: string | null;
+  notes?: string;
 }

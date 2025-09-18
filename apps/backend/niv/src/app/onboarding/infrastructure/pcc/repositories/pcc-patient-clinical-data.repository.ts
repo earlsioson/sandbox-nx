@@ -1,25 +1,25 @@
 // onboarding/infrastructure/pcc/repositories/pcc-patient-clinical-data.repository.ts
 import { Injectable, Logger } from '@nestjs/common';
-import { PCCAPIClient } from '../../../../shared/infrastructure/pcc/pcc-api.client';
+import { PccAPIClient } from '../../../../shared/infrastructure/pcc/pcc-api.client';
 import { Patient } from '../../../domain/patient';
 import {
-  PCCPatientClinicalDataResponse,
-  PCCPatientResponse,
+  PccPatientClinicalDataResponse,
+  PccPatientResponse,
 } from '../entities/pcc-patient-response.entity';
-import { PCCPatientClinicalDataMapper } from '../mappers/pcc-patient-clinical-data.mapper';
+import { PccPatientClinicalDataMapper } from '../mappers/pcc-patient-clinical-data.mapper';
 
 @Injectable()
-export class PCCPatientClinicalDataRepository {
-  private readonly logger = new Logger(PCCPatientClinicalDataRepository.name);
+export class PccPatientClinicalDataRepository {
+  private readonly logger = new Logger(PccPatientClinicalDataRepository.name);
 
-  constructor(private pccApiClient: PCCAPIClient) {}
+  constructor(private pccApiClient: PccAPIClient) {}
 
   async findPatientById(patientId: string): Promise<Patient | null> {
     try {
       this.logger.log(`🔍 Fetching patient data from PCC: ${patientId}`);
 
       // Get patient basic information
-      const patientData = await this.pccApiClient.get<PCCPatientResponse>(
+      const patientData = await this.pccApiClient.get<PccPatientResponse>(
         `/api/public/preview1/patients/${patientId}`
       );
 
@@ -29,7 +29,7 @@ export class PCCPatientClinicalDataRepository {
       );
 
       // Combine into clinical data response
-      const clinicalData: PCCPatientClinicalDataResponse = {
+      const clinicalData: PccPatientClinicalDataResponse = {
         patient: patientData,
         medicalDiagnosis: [], // Would be populated from another endpoint if available
         treatmentDiagnosis: [], // Would be populated from another endpoint if available
@@ -37,7 +37,7 @@ export class PCCPatientClinicalDataRepository {
       };
 
       const patient =
-        PCCPatientClinicalDataMapper.patientToDomain(clinicalData);
+        PccPatientClinicalDataMapper.patientToDomain(clinicalData);
 
       this.logger.log(
         `✅ Successfully fetched patient data for: ${patientId}`,
@@ -73,7 +73,7 @@ export class PCCPatientClinicalDataRepository {
 
       // Get facility patients list
       const patientsResponse = await this.pccApiClient.get<{
-        data: PCCPatientResponse[];
+        data: PccPatientResponse[];
       }>(`/api/public/preview1/facilities/${facilityId}/patients`, {
         // Add query parameters as needed for pagination, filtering, etc.
         limit: 100,
@@ -89,14 +89,14 @@ export class PCCPatientClinicalDataRepository {
               `/api/public/preview1/patients/${patient.patientId}/conditions`
             );
 
-            const clinicalData: PCCPatientClinicalDataResponse = {
+            const clinicalData: PccPatientClinicalDataResponse = {
               patient,
               conditions: conditions || [],
               medicalDiagnosis: [],
               treatmentDiagnosis: [],
             };
 
-            return PCCPatientClinicalDataMapper.patientToDomain(clinicalData);
+            return PccPatientClinicalDataMapper.patientToDomain(clinicalData);
           } catch (error) {
             this.logger.warn(
               `⚠️ Failed to fetch clinical data for patient ${patient.patientId}:`,
@@ -104,14 +104,14 @@ export class PCCPatientClinicalDataRepository {
             );
 
             // Return patient with basic data only if clinical data fetch fails
-            const basicClinicalData: PCCPatientClinicalDataResponse = {
+            const basicClinicalData: PccPatientClinicalDataResponse = {
               patient,
               conditions: [],
               medicalDiagnosis: [],
               treatmentDiagnosis: [],
             };
 
-            return PCCPatientClinicalDataMapper.patientToDomain(
+            return PccPatientClinicalDataMapper.patientToDomain(
               basicClinicalData
             );
           }

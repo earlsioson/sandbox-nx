@@ -3,17 +3,17 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios, { AxiosResponse } from 'axios';
 import * as fs from 'fs';
 import * as https from 'https';
-import { PCCAuthService } from './pcc-auth.service';
-import { PCCConfigService } from './pcc-config.service';
+import { PccAuthService } from './pcc-auth.service';
+import { PccConfigService } from './pcc-config.service';
 
 @Injectable()
-export class PCCAPIClient {
-  private readonly logger = new Logger(PCCAPIClient.name);
+export class PccAPIClient {
+  private readonly logger = new Logger(PccAPIClient.name);
   private httpsAgent: https.Agent;
 
   constructor(
-    private authService: PCCAuthService,
-    private configService: PCCConfigService
+    private authService: PccAuthService,
+    private configService: PccConfigService
   ) {
     this.httpsAgent = this.createMTLSAgent();
   }

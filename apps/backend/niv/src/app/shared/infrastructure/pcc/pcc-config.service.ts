@@ -2,7 +2,7 @@
 import { Injectable } from '@nestjs/common';
 
 @Injectable()
-export class PCCConfigService {
+export class PccConfigService {
   get clientId(): string {
     const clientId = process.env.PCC_CLIENT_ID;
     if (!clientId) {
