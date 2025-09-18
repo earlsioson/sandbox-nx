@@ -1,0 +1,79 @@
+Diagnosis Code,Diagnosis Name,Diagnosis Type
+J44.0,Chronic obstructive pulmonary disease with acute lower respiratory infection,COPD
+J44.1,Chronic obstructive pulmonary disease with (acute) exacerbation,COPD
+J96.11,Chronic respiratory failure with hypoxia,RF w/o hyper
+J96.20,"acute and chronic respiratory failure, unspecified whether with hypoxia or hypercapnia",RF w/o hyper
+J96.90,"Respiratory failure, unspecified, unspecified whether with hypoxia or hypercapnia",RF w/o hyper
+J96.01,Acute respiratory failure with hypoxia,Acute RF
+J96.02,Acute respiratory failure with hypercapnia,Acute RF
+J42,Chronic bronchitis,COPD
+J43.9,"Emphysema, unspecified",COPD
+J44.9,"Chronic obstructive pulmonary disease, unspecified",COPD
+J47.9,"Bronchiectasis, unspecified",COPD
+J96.12,Chronic respiratory failure with hypercapnia,RF w/ hyper
+J96.22,Acute and chronic respiratory failure with hypercapnia,RF w/ hyper
+J96.10,"Chronic respiratory failure, unspecified",RF w/o hyper
+J96.21,Acute and chronic respiratory failure with hypoxia,RF w/o hyper
+J96.92,"Respiratory failure, unspecified, not elsewhere classified",RF w/o hyper
+G80.0,Spastic quadriplegic cerebral palsy,Stand Alone
+G80.1,Cerebral Palsy,Stand Alone
+G82.22,Paraplegia,Stand Alone
+I69.964,Other paralytic syndrome following cerebrovascular disease,Stand Alone
+E84.9,"Cystic fibrosis, unspecified ",Stand Alone
+G12.0,Infantile spinal muscular atrophy (Werdnig-Hoffmann disease),Stand Alone
+G12.21,Amyotrophic lateral sclerosis (ALS),Stand Alone
+G12.9,"Spinal muscular atrophy, unspecified",Stand Alone
+G14,Post-polio syndrome with respiratory decline,Stand Alone
+G23.1,Multiple system atrophy (MSA) with respiratory failure,Stand Alone
+J43.8,Other emphysema,COPD
+J44.89,Other specified chronic obstructive pulmonary disease,COPD
+J45.909,"Unspecified asthma, uncomplicated",COPD
+J45.998,Other asthma,COPD
+J66.8,Airway disease due to fumes and vapors,Stand Alone
+J84.10,"Pulmonary fibrosis, unspecified",Stand Alone
+J84.178,Other interstitial pulmonary diseases with fibrosis,Stand Alone
+M40.00,"Kyphosis, site unspecified",Stand Alone
+M40.204,"Kyphosis, thoracic region",Stand Alone
+M40.294,"Kyphosis, cervicothoracic region",Stand Alone
+M41.34,Thoracogenic scoliosis,Stand Alone
+M41.46,Neuromuscular scoliosis,Stand Alone
+G35,Multiple sclerosis with respiratory involvement,Stand Alone
+G47.31,Central sleep apnea with hypercapnia,Stand Alone
+G47.34,Primary alveolar hypoventilation syndrome,Stand Alone
+G47.35,Congenital central hypoventilation syndrome,Stand Alone
+G61.0,Guillain-Barré syndrome (severe cases with respiratory failure),Stand Alone
+G70.00,Myasthenia gravis without (acute) exacerbation,Stand Alone
+G70.01,Myasthenia gravis with (acute) exacerbation,Stand Alone
+G70.2,Disorders of neuromuscular transmission with respiratory involvement,Stand Alone
+G70.80,"Lambert-Eaton syndrome, unspecified",Stand Alone
+G71.0,Muscular dystrophy (includes Duchenne and Becker),Stand Alone
+G71.01,Duchenne or Becker muscular dystrophy,Stand Alone
+G71.02,Other muscular dystrophies,Stand Alone
+G71.021,Autosomal dominant muscular dystrophy,Stand Alone
+G71.032,Autosomal recessive muscular dystrophy due to calpain-3 dysfunction,Stand Alone
+G71.033,Autosomal recessive muscular dystrophy due to dysferlin dysfunction,Stand Alone
+G71.034,Autosomal recessive muscular dystrophy due to sarcoglycan dysfunction,Stand Alone
+G71.11,Myotonic dystrophy,Stand Alone
+G71.2,Congenital myopathies,Stand Alone
+G73.1,Lambert-Eaton syndrome in neoplastic disease,Stand Alone
+G73.7,"Myopathy in endocrine diseases (e.g., hypothyroid myopathy)",Stand Alone
+G73.81,Critical illness myopathy,Stand Alone
+G73.89,Other specified myopathies,Stand Alone
+G80.9,Cerebral palsy with respiratory compromise,Stand Alone
+G90.9,Autonomic neuropathy with respiratory involvement,Stand Alone
+I27.0,Primary pulmonary hypertension,Stand Alone
+J45.50,Severe asthma with chronic respiratory failure,Stand Alone
+J84.89,"Other interstitial pulmonary diseases (e.g., post-COVID fibrosis)",Stand Alone
+J84.9,"Interstitial pulmonary disease, unspecified",Stand Alone
+J95.1,Post-thoracotomy respiratory failure,Stand Alone
+M40.209,"Kyphosis, unspecified region",Stand Alone
+M40.299,"Other kyphosis, site unspecified",Stand Alone
+M41.9,"Scoliosis, unspecified",Stand Alone
+M45.9,Ankylosing spondylitis,Stand Alone
+Q67.6,Pectus excavatum,Stand Alone
+Q76.49,Other congenital musculoskeletal deformities of rib cage,Stand Alone
+S06.9X9A,"Traumatic brain injury, sequela",Stand Alone
+S14.109A,Unspecified injury of cervical spinal cord at C3–C5 level,Stand Alone
+S22.49XA,S22.49XA,Stand Alone
+Z99.11,Dependence on Ventilator,Vent dependence
+J96.00,"ACUTE RESPIRATORY FAILURE, UNSPECIFIED WHETHER WITH HYPOXIA OR HYPERCAPNIA",Acute RF
