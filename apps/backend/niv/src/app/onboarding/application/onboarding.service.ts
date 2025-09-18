@@ -1,7 +1,11 @@
+// apps/backend/niv/src/app/onboarding/application/onboarding.service.ts
+// ✅ COMPLETE FILE - Only use if you accidentally replaced the original
+
 import { Injectable } from '@nestjs/common';
 import { NivOnboardingFactory } from '../domain/factories/niv-onboarding.factory';
 import { NivOnboarding } from '../domain/niv-onboarding';
 import { Patient } from '../domain/patient';
+import { OnboardingStatus } from '../domain/value-objects/onboarding-status';
 import { OnboardingRepository } from './ports/onboarding.repository';
 
 export interface PatientWithQualifications {
@@ -16,8 +20,7 @@ export class OnboardingService {
   constructor(
     private readonly onboardingRepository: OnboardingRepository,
     private readonly onboardingFactory: NivOnboardingFactory
-  ) // NO LONGER NEED: ClinicalQualificationService - logic moved to aggregate
-  {}
+  ) {}
 
   async getPatientsWithQualifications(
     facilityId?: string
@@ -55,7 +58,7 @@ export class OnboardingService {
         );
       }
 
-      // REFACTORED: Use aggregate method instead of service
+      // Use aggregate method instead of service
       onboarding.assessClinicalQualifications(patient, qualificationCriteria);
 
       // Save updated onboarding (with new qualifications)
@@ -109,6 +112,11 @@ export class OnboardingService {
     return await this.onboardingRepository.save(onboarding);
   }
 
+  // ✅ MISSING METHOD - This was the main error
+  async findAllOnboardings(): Promise<NivOnboarding[]> {
+    return await this.onboardingRepository.findAll();
+  }
+
   async getOnboardingById(id: string): Promise<NivOnboarding | null> {
     return await this.onboardingRepository.findById(id);
   }
@@ -119,9 +127,42 @@ export class OnboardingService {
     return await this.onboardingRepository.findByPatientId(patientId);
   }
 
+  async updateOnboardingStatus(
+    id: string,
+    status: 'NEW' | 'WATCHLIST' | 'PENDING' | 'ACTIVE' | 'REVIEWED' | 'CHANGED'
+  ): Promise<NivOnboarding> {
+    const onboarding = await this.onboardingRepository.findById(id);
+    if (!onboarding) {
+      throw new Error(`Onboarding not found: ${id}`);
+    }
+
+    // Use aggregate method to maintain business rules
+    const newStatus = new OnboardingStatus(status);
+    onboarding.updateStatus(newStatus);
+
+    return await this.onboardingRepository.save(onboarding);
+  }
+
+  // ✅ IMPLEMENTED - This was throwing an error before
   private async getAllPatients(): Promise<Patient[]> {
-    // This would need to be implemented based on how you want to get all patients
-    // For now, throwing an error to indicate this needs implementation
-    throw new Error('Getting all patients across facilities not implemented');
+    // Get all patients from all facilities
+    const allOnboardings = await this.onboardingRepository.findAll();
+    const facilityIds = [...new Set(allOnboardings.map((o) => o.facilityId))];
+
+    const allPatients: Patient[] = [];
+    for (const facilityId of facilityIds) {
+      const patients = await this.onboardingRepository.findPatientsByFacility(
+        facilityId
+      );
+      allPatients.push(...patients);
+    }
+
+    // Remove duplicates by patient ID
+    const uniquePatients = allPatients.filter(
+      (patient, index, array) =>
+        array.findIndex((p) => p.id === patient.id) === index
+    );
+
+    return uniquePatients;
   }
 }

@@ -7,11 +7,11 @@ import {
   QualificationCriteria,
 } from '../../../domain/niv-onboarding';
 import { Patient } from '../../../domain/patient';
+import { PccPatientClinicalDataRepository } from '../../pcc/repositories/pcc-patient-clinical-data.repository';
 import { DiagnosisCodeQualificationEntity } from '../entities/diagnosis-code-qualification.entity';
 import { NivOnboardingEntity } from '../entities/niv-onboarding.entity';
 import { PatientEntity } from '../entities/patient.entity';
 import { OnboardingMapper } from '../mappers/onboarding.mapper';
-import { PccPatientClinicalDataRepository } from '../pcc/repositories/pcc-patient-clinical-data.repository';
 
 @Injectable()
 export class OrmOnboardingRepository implements OnboardingRepository {

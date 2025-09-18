@@ -1,15 +1,15 @@
+// apps/backend/niv/src/app/onboarding/application/onboarding.module.ts
 import { DynamicModule, Module, Type } from '@nestjs/common';
-import { NIVOnboardingFactory } from '../domain/factories/niv-onboarding.factory';
-import { ClinicalQualificationService } from '../domain/services/clinical-qualification.service';
-import { OnboardingController } from '../presenters/http/onboarding.controller';
+import { NivOnboardingFactory } from '../domain/factories/niv-onboarding.factory'; // Fixed: was NIVOnboardingFactory
+import { OnboardingController } from '../presenters/http/onboarding.controller'; // Fixed path
 import { OnboardingService } from './onboarding.service';
 
 @Module({
   controllers: [OnboardingController],
   providers: [
     OnboardingService,
-    NIVOnboardingFactory,
-    ClinicalQualificationService,
+    NivOnboardingFactory, // Fixed: was NIVOnboardingFactory
+    // Removed: ClinicalQualificationService
   ],
 })
 export class OnboardingModule {

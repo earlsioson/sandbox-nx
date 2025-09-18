@@ -182,7 +182,7 @@ export class PccTestService {
 
   async testCertificates(): Promise<any> {
     try {
-      const agent = this.createMTLSAgent();
+      const _agent = this.createMTLSAgent();
       this.logger.log('✅ Certificates loaded successfully');
 
       return {
