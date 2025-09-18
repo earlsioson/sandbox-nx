@@ -1,5 +1,4 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { OnboardingService } from '../../application/onboarding.service';
 import {
   ClinicalQualificationsResponseDto,
   GetPatientsWithQualificationsResponseDto,
@@ -7,6 +6,7 @@ import {
   PatientResponseDto,
   PatientWithQualificationsResponseDto,
 } from './dto/patients-with-qualifications-response.dto';
+import { OnboardingService } from './onboarding.service';
 
 @Controller('onboarding')
 export class OnboardingController {

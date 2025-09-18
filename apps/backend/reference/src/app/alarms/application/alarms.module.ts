@@ -1,6 +1,6 @@
 import { DynamicModule, Module, Type } from '@nestjs/common';
 import { AlarmFactory } from '../domain/factories/alarm.factory';
-import { AlarmsController } from '../presenters/http/alarms.controller';
+import { AlarmsController } from './alarms.controller';
 import { AlarmsService } from './alarms.service';
 
 @Module({

@@ -1,7 +1,7 @@
 // apps/backend/niv/src/app/onboarding/application/onboarding.module.ts
 import { DynamicModule, Module, Type } from '@nestjs/common';
 import { NivOnboardingFactory } from '../domain/factories/niv-onboarding.factory'; // Fixed: was NIVOnboardingFactory
-import { OnboardingController } from '../presenters/http/onboarding.controller'; // Fixed path
+import { OnboardingController } from './onboarding.controller'; // Fixed path
 import { OnboardingService } from './onboarding.service';
 
 @Module({

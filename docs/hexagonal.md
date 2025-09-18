@@ -26,7 +26,7 @@ Adapapters implement the interfaces (or ports) defined by the core domain. They 
 
 ### Application folder
 
-Contains the application services, facades, handlers. it communicates with data access components, message Brokers and other External systems through "interface" called ports.
+Contains the application controllers, services, facades, handlers. it communicates with data access components, message Brokers and other External systems through "interface" called ports.
 
 ### Domain Folder
 
@@ -35,7 +35,3 @@ Contains the domain models, value objects, domain events
 ### Infrastructure folder
 
 Contains the data access components, message brokers and other external systems. it will implement the interfaces (aka ports) defined by the application layer
-
-### Presenters folder
-
-Contains the controllers, gateways and other user-facing components or APIs. sometimes the presenters folder is also called the user-interface folder and sometime just interface.

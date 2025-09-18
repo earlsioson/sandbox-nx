@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { AlarmsService } from '../../application/alarms.service';
 import { AlarmsController } from './alarms.controller';
+import { AlarmsService } from './alarms.service';
 
 describe('AlarmsController', () => {
   let controller: AlarmsController;
