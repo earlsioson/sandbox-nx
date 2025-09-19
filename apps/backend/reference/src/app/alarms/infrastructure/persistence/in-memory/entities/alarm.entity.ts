@@ -1,6 +1,4 @@
-import { AlarmState } from '../../../../domain/alarm-state.interface';
-
-export class AlarmEntity implements AlarmState {
+export class AlarmEntity {
   id!: string;
   name!: string;
   severity!: string;
