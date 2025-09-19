@@ -36,6 +36,9 @@ jobs:
           node-version: 20
           cache: 'pnpm'
 
+      - name: Clean backend-niv dist directory
+        run: rm -rf apps/backend/niv/dist/app
+
       - run: pnpm install --frozen-lockfile
 
       # Prepend any command with "nx-cloud record --" to record its logs to Nx Cloud
