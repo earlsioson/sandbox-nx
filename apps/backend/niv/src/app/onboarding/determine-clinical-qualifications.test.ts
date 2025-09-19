@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ClinicalQualifications } from '../interfaces/clinical-qualifications.interface';
-import { determineClinicalQualifications } from './determine-clinical-qualifications.function';
+import { ClinicalQualifications } from './clinical-qualifications';
+import { determineClinicalQualifications } from './determine-clinical-qualifications';
 
 describe('determineClinicalQualifications', () => {
   describe('COPD Qualifications', () => {
