@@ -3,7 +3,7 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { fromIni } from '@aws-sdk/credential-providers';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger } from '@nestjs/common';
-import { ExceptionTranslator } from '../shared/application/services/exception-translator.service';
+import { ExceptionTranslator } from '../exception-translator.service';
 
 export interface PresignedUrlRequest {
   key: string;

@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
 import * as fs from 'fs';
 import * as https from 'https';
-import { ExceptionTranslator } from '../../application/services/exception-translator.service';
+import { ExceptionTranslator } from '../exception-translator.service';
 import { PccConfigService } from './pcc-config.service';
 
 export interface PccTokenResponse {
