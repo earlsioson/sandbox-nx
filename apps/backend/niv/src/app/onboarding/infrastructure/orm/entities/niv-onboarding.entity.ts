@@ -5,10 +5,9 @@ import {
   PrimaryColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { OnboardingState } from '../../../domain/onboarding-state.interface';
 
 @Entity('niv_onboardings')
-export class NivOnboardingEntity implements OnboardingState {
+export class NivOnboardingEntity {
   @PrimaryColumn('uuid')
   id!: string;
 

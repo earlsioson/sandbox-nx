@@ -1,4 +1,3 @@
-import { OnboardingState } from './onboarding-state.interface';
 import { Patient } from './patient';
 import { ClinicalQualifications } from './value-objects/clinical-qualifications';
 import { DiagnosisCode } from './value-objects/diagnosis-code';
@@ -10,7 +9,7 @@ export interface QualificationCriteria {
   isQualifying: boolean;
 }
 
-export class NivOnboarding implements OnboardingState {
+export class NivOnboarding {
   private _status: OnboardingStatus;
   private _qualifications: ClinicalQualifications;
 

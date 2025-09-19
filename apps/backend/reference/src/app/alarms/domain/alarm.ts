@@ -1,8 +1,6 @@
-// ✅ CHANGE TO: Back to instructors' rich objects + interface compliance
-import { AlarmState } from './alarm-state.interface';
 import { AlarmSeverity } from './value-objects/alarm-severity';
 
-export class Alarm implements AlarmState {
+export class Alarm {
   private _severity: AlarmSeverity; // ✅ Rich object (instructors' way)
 
   constructor(

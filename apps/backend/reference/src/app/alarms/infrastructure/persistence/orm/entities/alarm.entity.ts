@@ -1,8 +1,7 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
-import { AlarmState } from '../../../../domain/alarm-state.interface';
 
 @Entity('alarms')
-export class AlarmEntity implements AlarmState {
+export class AlarmEntity {
   @PrimaryColumn('uuid')
   id!: string;
 
