@@ -10,12 +10,6 @@
       "path": "./apps/backend/niv"
     },
     {
-      "path": "./apps/backend/reference-e2e"
-    },
-    {
-      "path": "./apps/backend/reference"
-    },
-    {
       "path": "./apps/frontend/niv-e2e"
     },
     {

@@ -21,17 +21,3 @@ Interfaces that represent the entry points into the core application. They defin
 ## Adapters
 
 Adapapters implement the interfaces (or ports) defined by the core domain. They serve as the bridge between the core application and the external concerns. Adapters are responsible for translating the language of the core domain into something that external systems can understand, such as data persistence mechanisms, APIs, or user interfaces.
-
-## Nest.js implentation of hexagonal architecture suggestion
-
-### Application folder
-
-Contains the application controllers, services, facades, handlers. it communicates with data access components, message Brokers and other External systems through "interface" called ports.
-
-### Domain Folder
-
-Contains the domain models, value objects, domain events
-
-### Infrastructure folder
-
-Contains the data access components, message brokers and other external systems. it will implement the interfaces (aka ports) defined by the application layer
