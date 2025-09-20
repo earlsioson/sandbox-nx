@@ -1,0 +1,105 @@
+title: "NIV Hexagonal Architecture - Ports & Adapters" {
+  near: top-center
+}
+
+# External Systems
+client: Frontend/Client
+pcc: PointClickCare EHR
+
+# Hexagonal Architecture
+controller: HTTP Controller {
+  desc: "onboarding.controller.ts (Primary Adapter)"
+  note: "NestJS - Infrastructure Layer"
+}
+
+core: Application Core {
+  shape: hexagon
+  service: "onboarding.service.ts"
+  domain: "Patient, Diagnosis, OnboardingError"
+}
+
+repo_ports: Repository Ports {
+  shape: oval
+  desc: "GetPatientPort, GetPatientDiagnosesPort (Secondary Ports)"
+}
+
+adapter: PCC Adapter {
+  desc: "adapters.ts (Secondary Adapter)"
+}
+
+# Correct Flow: Client -> Primary Adapter -> Core -> Secondary Ports -> Secondary Adapter -> PCC
+client -> controller: "1. HTTP Request"
+controller -> core: "2. Call service directly"
+core -> repo_ports: "3. Need external data"
+repo_ports -> adapter: "4. Port implementation"
+adapter -> pcc: "5. API call"
+
+# Response flow back
+pcc -> adapter: "PCC JSON"
+adapter -> repo_ports: "Domain objects"
+repo_ports -> core: "Patient data"
+core -> controller: "Business result"
+controller -> client: "HTTP response"
+
+# Error Handling Flow
+pcc_error: "PCC API Error" {
+  examples: "404, 503, 401"
+}
+
+domain_error: "OnboardingError" {
+  properties: "code, action, context"
+}
+
+http_error: "HTTP Error Response" {
+  properties: "status, structured JSON"
+}
+
+# Error flow through layers
+pcc -> pcc_error: {
+  label: "API failure"
+  style.stroke-dash: 5
+}
+pcc_error -> adapter: {
+  label: "catch technical error"
+  style.stroke-dash: 5
+}
+adapter -> domain_error: {
+  label: "mapPccErrorToOnboardingError()"
+  style.stroke-dash: 5
+}
+domain_error -> core: {
+  label: "bubbles up (not caught)"
+  style.stroke-dash: 5
+}
+core -> controller: {
+  label: "catch domain error"
+  style.stroke-dash: 5
+}
+controller -> http_error: {
+  label: "mapDomainErrorToHttp()"
+  style.stroke-dash: 5
+}
+http_error -> client: {
+  label: "structured error response"
+  style.stroke-dash: 5
+}
+
+# Error handling annotations
+error_transform: "Error Transformation Points" {
+  near: bottom-left
+
+  adapter_note: "Adapter: PCC HTTP -> Domain Error"
+  controller_note: "Controller: Domain Error -> HTTP Response"
+}
+
+# Architecture Notes
+implementation_notes: "Current Implementation" {
+  near: bottom-right
+
+  primary_adapter: "Controller IS the Primary Adapter"
+  no_primary_port: "No explicit Primary Port interface"
+  secondary_ports: "Secondary Ports define PCC contracts"
+}
+
+# Position elements left to right
+client -> controller -> core -> repo_ports -> adapter -> pcc
