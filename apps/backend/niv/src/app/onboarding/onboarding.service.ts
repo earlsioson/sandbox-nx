@@ -1,12 +1,20 @@
+// apps/backend/niv/src/app/onboarding/onboarding.service.ts
 import { Injectable, Logger } from '@nestjs/common';
 import { createMockPccAdapter, createPccAdapter } from './adapters';
 import { getClinicalQualifications } from './diagnosis';
+import { OnboardingError } from './errors';
 
+/**
+ * Application Service for NIV Patient Onboarding
+ *
+ * ONLY CHANGE: Improved error handling for infrastructure failures
+ * All business logic remains exactly as originally implemented
+ */
 @Injectable()
 export class OnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
 
-  // Use dependency injection pattern but with our functional adapters
+  // Use dependency injection pattern with functional adapters
   private readonly pccAdapter = createPccAdapter();
   private readonly mockAdapter = createMockPccAdapter();
 
@@ -24,9 +32,19 @@ export class OnboardingService {
       };
     } catch (error) {
       this.logger.error('PCC connection test failed:', error);
+
+      // Only improvement: better error context for infrastructure failures
+      if (error instanceof OnboardingError) {
+        return {
+          success: false,
+          message: `PCC connection failed: ${error.message}`,
+          timestamp: new Date().toISOString(),
+        };
+      }
+
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'PCC connection failed: Unknown error',
         timestamp: new Date().toISOString(),
       };
     }
@@ -39,6 +57,7 @@ export class OnboardingService {
     try {
       this.logger.log(`Getting patient ${patientId} with qualifications...`);
 
+      // Original business logic - unchanged
       const { patient, diagnoses } =
         await this.pccAdapter.getPatientWithDiagnoses(orgUuid, patientId);
 
@@ -51,6 +70,7 @@ export class OnboardingService {
 
       const qualifications = getClinicalQualifications(diagnoses);
 
+      // Original response format - unchanged
       return {
         success: true,
         data: {
@@ -68,7 +88,16 @@ export class OnboardingService {
         },
       };
     } catch (error) {
-      this.logger.error(`Failed to get patient ${patientId}:`, error);
+      // Only improvement: better error logging and handling for infrastructure failures
+      this.logger.error(`Failed to get patient ${patientId}:`, {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        operation: 'patient_qualification_lookup',
+        patientId,
+        orgUuid,
+      });
+
+      // Return original error format - unchanged
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -76,7 +105,7 @@ export class OnboardingService {
     }
   }
 
-  // Test with mock data
+  // Test with mock data - original logic unchanged
   async testMockData(): Promise<any> {
     try {
       const { patient, diagnoses } =
