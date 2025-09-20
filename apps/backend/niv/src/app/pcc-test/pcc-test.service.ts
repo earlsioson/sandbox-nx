@@ -184,10 +184,10 @@ export class PccTestService {
   private createMTLSAgent(): https.Agent {
     const certPath = (
       process.env.PCC_CERT_PATH ||
-      '~/dev/certs/dev.ancientfire.tech/fullchain.pem'
+      '~/dev/certs/prod.centaracare.us/fullchain.pem'
     ).replace('~', process.env.HOME || '');
     const keyPath = (
-      process.env.PCC_KEY_PATH || '~/dev/certs/dev.ancientfire.tech/privkey.pem'
+      process.env.PCC_KEY_PATH || '~/dev/certs/prod.centaracare.us/privkey.pem'
     ).replace('~', process.env.HOME || '');
 
     try {
