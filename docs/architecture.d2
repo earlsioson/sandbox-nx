@@ -1,4 +1,4 @@
-title: "NIV Hexagonal Architecture - Ports & Adapters" {
+title: "NIV Hexagonal Architecture - Implemented" {
   near: top-center
 }
 
@@ -6,52 +6,87 @@ title: "NIV Hexagonal Architecture - Ports & Adapters" {
 client: Frontend/Client
 pcc: PointClickCare EHR
 
-# Hexagonal Architecture
+# Hexagonal Architecture - Current Implementation
 controller: HTTP Controller {
   desc: "onboarding.controller.ts (Primary Adapter)"
-  note: "NestJS - Infrastructure Layer"
+  note: "Maps HTTP ↔ Domain, Error handling"
 }
 
-core: Application Core {
+service: NestJS Service {
+  desc: "onboarding.service.ts (Thin Adapter)"
+  note: "Framework concerns only"
+}
+
+domain: Domain Service {
   shape: hexagon
-  service: "onboarding.service.ts"
-  domain: "Patient, Diagnosis, OnboardingError"
+  desc: "qualifications.ts (Pure Business Logic)"
+  note: "Framework-agnostic, Unit testable"
 }
 
-repo_ports: Repository Ports {
+contracts: EHR Operations {
   shape: oval
-  desc: "GetPatientPort, GetPatientDiagnosesPort (Secondary Ports)"
+  desc: "ehr-operations.ts (Secondary Ports)"
+  note: "GetPatient, GetPatientDiagnoses, etc."
 }
 
-adapter: PCC Adapter {
-  desc: "adapters.ts (Secondary Adapter)"
+adapter: EHR Adapter {
+  desc: "ehr.ts (Secondary Adapter)"
+  note: "PCC implementation, Error mapping"
 }
 
-# Correct Flow: Client -> Primary Adapter -> Core -> Secondary Ports -> Secondary Adapter -> PCC
+# Domain Objects
+entities: Domain Objects {
+  patient: "patient.ts (Entity)"
+  diagnosis: "diagnosis.ts (Value Object)"
+  errors: "errors.ts (Domain Errors)"
+}
+
+# Infrastructure
+pcc_client: PCC Client {
+  desc: "ehr/pcc/ (HTTP Infrastructure)"
+  note: "mTLS, Token caching, Rate limiting"
+}
+
+# Primary Flow: Client → Domain → EHR
 client -> controller: "1. HTTP Request"
-controller -> core: "2. Call service directly"
-core -> repo_ports: "3. Need external data"
-repo_ports -> adapter: "4. Port implementation"
-adapter -> pcc: "5. API call"
+controller -> service: "2. NestJS concerns"
+service -> domain: "3. Business operation"
+domain -> contracts: "4. Need EHR data"
+contracts -> adapter: "5. Implementation"
+adapter -> pcc_client: "6. HTTP call"
+pcc_client -> pcc: "7. mTLS API"
 
 # Response flow back
-pcc -> adapter: "PCC JSON"
-adapter -> repo_ports: "Domain objects"
-repo_ports -> core: "Patient data"
-core -> controller: "Business result"
+pcc -> pcc_client: "PCC JSON"
+pcc_client -> adapter: "HTTP response"
+adapter -> contracts: "Domain objects"
+contracts -> domain: "Patient + Diagnoses"
+domain -> service: "Assessment result"
+service -> controller: "Business outcome"
 controller -> client: "HTTP response"
 
-# Error Handling Flow
-pcc_error: "PCC API Error" {
-  examples: "404, 503, 401"
+# Domain Object Dependencies
+domain -> entities: "Uses"
+adapter -> entities: "Creates"
+
+# Error Handling Flow - Infrastructure vs Business
+pcc_error: "Infrastructure Error" {
+  examples: "404, 503, 401, Timeout"
 }
 
-domain_error: "OnboardingError" {
+domain_error: "Domain Error" {
   properties: "code, action, context"
+  actions: "'stop', 'retry', 'user-input'"
 }
 
-http_error: "HTTP Error Response" {
+http_error: "HTTP Response" {
   properties: "status, structured JSON"
+  mapping: "Action → HTTP Status"
+}
+
+business_outcome: "Business Outcome" {
+  examples: "Empty diagnoses, Not eligible"
+  format: "Success response"
 }
 
 # Error flow through layers
@@ -60,18 +95,18 @@ pcc -> pcc_error: {
   style.stroke-dash: 5
 }
 pcc_error -> adapter: {
-  label: "catch technical error"
+  label: "catch & map"
   style.stroke-dash: 5
 }
 adapter -> domain_error: {
   label: "mapPccErrorToOnboardingError()"
   style.stroke-dash: 5
 }
-domain_error -> core: {
+domain_error -> service: {
   label: "bubbles up (not caught)"
   style.stroke-dash: 5
 }
-core -> controller: {
+service -> controller: {
   label: "catch domain error"
   style.stroke-dash: 5
 }
@@ -80,26 +115,59 @@ controller -> http_error: {
   style.stroke-dash: 5
 }
 http_error -> client: {
-  label: "structured error response"
+  label: "503/404/422 + action"
   style.stroke-dash: 5
 }
 
-# Error handling annotations
-error_transform: "Error Transformation Points" {
+# Business outcome flow (not errors)
+adapter -> business_outcome: {
+  label: "404 diagnoses → []"
+  style.stroke-dash: 3
+}
+business_outcome -> domain: {
+  label: "success with data"
+  style.stroke-dash: 3
+}
+domain -> controller: {
+  label: "isNivEligible: false"
+  style.stroke-dash: 3
+}
+controller -> client: {
+  label: "200 + business result"
+  style.stroke-dash: 3
+}
+
+# Architecture Benefits
+benefits: "Architecture Benefits" {
   near: bottom-left
 
-  adapter_note: "Adapter: PCC HTTP -> Domain Error"
-  controller_note: "Controller: Domain Error -> HTTP Response"
+  framework_agnostic: "✅ Framework-agnostic domain"
+  unit_testable: "✅ Unit testable business logic"
+  error_strategy: "✅ Infrastructure vs Business errors"
+  healthcare_language: "✅ Healthcare ubiquitous language"
 }
 
-# Architecture Notes
-implementation_notes: "Current Implementation" {
+# Current Implementation Status
+implementation: "Implementation Status" {
   near: bottom-right
 
-  primary_adapter: "Controller IS the Primary Adapter"
-  no_primary_port: "No explicit Primary Port interface"
-  secondary_ports: "Secondary Ports define PCC contracts"
+  primary_ports: "✅ Proper primary port interface"
+  secondary_ports: "✅ EHR operation contracts"
+  domain_service: "✅ Pure domain service"
+  error_classification: "✅ Action-based error handling"
+  functional_ddd: "✅ Functional DDD pattern"
 }
 
-# Position elements left to right
-client -> controller -> core -> repo_ports -> adapter -> pcc
+# Key Patterns
+patterns: "Key Patterns Used" {
+  near: top-right
+
+  hexagonal: "Hexagonal Architecture"
+  ddd: "Domain-Driven Design"
+  functional: "Functional Programming"
+  ubiquitous: "Healthcare Ubiquitous Language"
+  error_actions: "Error Action Classification"
+}
+
+# Position elements for clarity
+client -> controller -> service -> domain -> contracts -> adapter -> pcc_client -> pcc

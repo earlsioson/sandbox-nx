@@ -1,126 +1,183 @@
 // apps/backend/niv/src/app/onboarding/onboarding.service.ts
-import { Injectable, Logger } from '@nestjs/common';
-import { createMockPccAdapter, createPccAdapter } from './adapters';
-import { getClinicalQualifications } from './diagnosis';
-import { OnboardingError } from './errors';
 
 /**
- * Application Service for NIV Patient Onboarding
+ * Primary Adapter (Hexagonal Architecture)
+ * Application Service (DDD)
  *
- * ONLY CHANGE: Improved error handling for infrastructure failures
- * All business logic remains exactly as originally implemented
+ * Thin NestJS adapter that translates framework concerns to domain operations.
+ *
+ * Responsibilities:
+ * - NestJS dependency injection and lifecycle management
+ * - Request logging and audit trails (important for healthcare)
+ * - Error handling and HTTP context translation
+ * - Delegating business operations to pure domain service
+ *
+ * Business logic has been extracted to qualifications.ts for framework-agnostic testing.
  */
+
+import { Injectable, Logger } from '@nestjs/common';
+import { createEhrAdapter, createMockEhrAdapter } from './ehr';
+import {
+  createQualifications,
+  type AssessmentResult,
+  type ConnectionTestResult,
+  type MockTestResult,
+  type Qualifications,
+} from './qualifications';
+
 @Injectable()
 export class OnboardingService {
   private readonly logger = new Logger(OnboardingService.name);
+  private readonly qualifications: Qualifications;
 
-  // Use dependency injection pattern with functional adapters
-  private readonly pccAdapter = createPccAdapter();
-  private readonly mockAdapter = createMockPccAdapter();
+  constructor() {
+    // Initialize EHR adapters using functional DDD pattern
+    const ehrAdapter = createEhrAdapter();
+    const mockEhrAdapter = createMockEhrAdapter();
 
-  async testPccConnection(): Promise<any> {
-    try {
-      this.logger.log('Testing PCC connection...');
-      const isConnected = await this.pccAdapter.testConnection();
-
-      return {
-        success: isConnected,
-        message: isConnected
-          ? 'PCC connection successful'
-          : 'PCC connection failed',
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      this.logger.error('PCC connection test failed:', error);
-
-      // Only improvement: better error context for infrastructure failures
-      if (error instanceof OnboardingError) {
-        return {
-          success: false,
-          message: `PCC connection failed: ${error.message}`,
-          timestamp: new Date().toISOString(),
-        };
+    // Create domain service with dependency injection
+    // Domain service is framework-agnostic and contains all business logic
+    this.qualifications = createQualifications(
+      {
+        getPatientWithDiagnoses: ehrAdapter.getPatientWithDiagnoses,
+        testConnection: ehrAdapter.testConnection,
+        getPatient: ehrAdapter.getPatient,
+        getPatientDiagnoses: ehrAdapter.getPatientDiagnoses,
+      },
+      {
+        getPatientWithDiagnoses: mockEhrAdapter.getPatientWithDiagnoses,
+        testConnection: mockEhrAdapter.testConnection,
+        getPatient: mockEhrAdapter.getPatient,
+        getPatientDiagnoses: mockEhrAdapter.getPatientDiagnoses,
       }
+    );
+  }
 
+  /**
+   * Test EHR connectivity - infrastructure health check
+   *
+   * NestJS Adapter Responsibilities:
+   * - Request logging for healthcare audit trails
+   * - Error handling and context for monitoring
+   * - Delegating to domain service for business logic
+   */
+  async testPccConnection(): Promise<ConnectionTestResult> {
+    this.logger.log('PCC connection test requested');
+
+    try {
+      // Delegate to domain service - no business logic in adapter
+      const result = await this.qualifications.testConnection();
+
+      // Log result for healthcare audit trails
+      this.logger.log(
+        `PCC connection test ${result.success ? 'succeeded' : 'failed'}`
+      );
+
+      return result;
+    } catch (error) {
+      // Handle unexpected errors (domain service should handle expected errors)
+      this.logger.error(
+        'PCC connection test failed with unexpected error:',
+        error
+      );
+
+      // Return consistent response format
       return {
         success: false,
-        message: 'PCC connection failed: Unknown error',
+        message: 'PCC connection failed: Unexpected error',
         timestamp: new Date().toISOString(),
       };
     }
   }
 
+  /**
+   * Get patient NIV qualifications - core business operation
+   *
+   * NestJS Adapter Responsibilities:
+   * - Request logging with patient context (healthcare audit requirement)
+   * - Input sanitization and logging
+   * - Error context for monitoring and debugging
+   * - Delegating to domain service for qualification assessment
+   */
   async getPatientWithQualifications(
     orgUuid: string,
     patientId: number
-  ): Promise<any> {
+  ): Promise<AssessmentResult> {
+    // Healthcare audit logging - important for compliance
+    this.logger.log(
+      `Patient qualification assessment: ${patientId} in org ${orgUuid}`
+    );
+
     try {
-      this.logger.log(`Getting patient ${patientId} with qualifications...`);
+      // Delegate to domain service - all business logic is there
+      const result = await this.qualifications.assessQualification(
+        orgUuid.trim(),
+        patientId
+      );
 
-      // Original business logic - unchanged
-      const { patient, diagnoses } =
-        await this.pccAdapter.getPatientWithDiagnoses(orgUuid, patientId);
-
-      if (!patient) {
-        return {
-          success: false,
-          error: 'Patient not found',
-        };
+      // Log outcome for healthcare audit trails
+      if (result.success && result.data) {
+        this.logger.log(
+          `Patient ${patientId} qualification assessment completed. NIV eligible: ${result.data.isNivEligible}`
+        );
+      } else {
+        this.logger.warn(
+          `Patient ${patientId} qualification assessment failed: ${result.error}`
+        );
       }
 
-      const qualifications = getClinicalQualifications(diagnoses);
-
-      // Original response format - unchanged
-      return {
-        success: true,
-        data: {
-          patient: {
-            ...patient,
-            fullName: `${patient.firstName} ${patient.lastName}`,
-          },
-          diagnoses: diagnoses.map((d) => ({
-            code: d.icd10Code,
-            description: d.description,
-            isPrimary: d.isPrimary,
-          })),
-          clinicalQualifications: qualifications,
-          isNivEligible: Object.values(qualifications).some(Boolean),
-        },
-      };
+      return result;
     } catch (error) {
-      // Only improvement: better error logging and handling for infrastructure failures
-      this.logger.error(`Failed to get patient ${patientId}:`, {
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        operation: 'patient_qualification_lookup',
-        patientId,
-        orgUuid,
-      });
+      // Log the full error context for healthcare audit trails and debugging
+      this.logger.error(
+        `Patient qualification assessment failed for ${patientId}:`,
+        {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          operation: 'patient_qualification_assessment',
+          patientId,
+          orgUuid,
+        }
+      );
 
-      // Return original error format - unchanged
+      // Domain errors bubble up to controller for proper HTTP mapping
+      // Adapter only catches truly unexpected errors
+      if (error instanceof Error) {
+        throw error;
+      }
+
+      // Fallback for non-Error types (should not happen with proper error mapping)
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: 'Unexpected error during qualification assessment',
       };
     }
   }
 
-  // Test with mock data - original logic unchanged
-  async testMockData(): Promise<any> {
-    try {
-      const { patient, diagnoses } =
-        await this.mockAdapter.getPatientWithDiagnoses('test-org', 123);
-      const qualifications = getClinicalQualifications(diagnoses);
+  /**
+   * Test with mock data - development endpoint
+   *
+   * NestJS Adapter Responsibilities:
+   * - Development request logging
+   * - Delegating to domain service for mock testing logic
+   */
+  async testMockData(): Promise<MockTestResult> {
+    this.logger.log('Mock data test requested');
 
-      return {
-        success: true,
-        data: {
-          patient,
-          diagnoses,
-          clinicalQualifications: qualifications,
-        },
-      };
+    try {
+      // Delegate to domain service - no business logic in adapter
+      const result = await this.qualifications.testWithMockData();
+
+      // Log result for development monitoring
+      this.logger.log(
+        `Mock data test ${result.success ? 'succeeded' : 'failed'}`
+      );
+
+      return result;
     } catch (error) {
+      // Handle unexpected errors
+      this.logger.error('Mock data test failed with unexpected error:', error);
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

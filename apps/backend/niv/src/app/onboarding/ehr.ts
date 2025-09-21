@@ -1,30 +1,46 @@
-// apps/backend/niv/src/app/onboarding/adapters.ts
+// apps/backend/niv/src/app/onboarding/ehr.ts
+
+/**
+ * Secondary Adapter (Hexagonal Architecture)
+ * Repository Implementation (DDD)
+ *
+ * Implements EHR operations using PointClickCare as the specific EHR system.
+ * Handles the technical details of connecting to PCC APIs and translating
+ * their responses into domain objects (Patient, Diagnosis).
+ *
+ * This adapter could be replaced with Epic, Cerner, or other EHR implementations
+ * without affecting the domain logic, as long as they implement the same
+ * EHR operations interface.
+ */
+
 import {
   createPccClient,
   createPccConfigFromEnv,
   PccConditionResponse,
   PccListResponse,
   PccPatientResponse,
-} from '../ehr-integration/pcc';
+} from '../ehr/pcc';
 import { createDiagnosis } from './diagnosis';
+import {
+  GetPatient,
+  GetPatientDiagnoses,
+  GetPatients,
+  GetPatientWithDiagnoses,
+} from './ehr-operations';
 import { OnboardingError } from './errors';
 import { createPatient } from './patient';
-import {
-  GetPatientDiagnosesPort,
-  GetPatientPort,
-  GetPatientsPort,
-  GetPatientWithDiagnosesPort,
-} from './ports';
 
-// Create PCC adapter using our functional client with proper error handling
-export function createPccAdapter() {
+/**
+ * Create EHR adapter using PointClickCare as the implementation
+ *
+ * Returns functional object implementing EHR operations interface
+ * Following the functional DDD pattern used throughout the project
+ */
+export function createEhrAdapter() {
   const config = createPccConfigFromEnv();
   const pccClient = createPccClient(config);
 
-  const getPatient: GetPatientPort = async (
-    orgUuid: string,
-    patientId: number
-  ) => {
+  const getPatient: GetPatient = async (orgUuid: string, patientId: number) => {
     try {
       const pccPatient = await pccClient.get<PccPatientResponse>(
         `/public/preview1/orgs/${orgUuid}/patients/${patientId}`
@@ -50,7 +66,7 @@ export function createPccAdapter() {
     }
   };
 
-  const getPatientDiagnoses: GetPatientDiagnosesPort = async (
+  const getPatientDiagnoses: GetPatientDiagnoses = async (
     orgUuid: string,
     patientId: number
   ) => {
@@ -87,7 +103,7 @@ export function createPccAdapter() {
     }
   };
 
-  const getPatientWithDiagnoses: GetPatientWithDiagnosesPort = async (
+  const getPatientWithDiagnoses: GetPatientWithDiagnoses = async (
     orgUuid: string,
     patientId: number
   ) => {
@@ -105,12 +121,9 @@ export function createPccAdapter() {
       if (error instanceof OnboardingError) {
         // Create new error with enhanced context for combined lookup
         throw new OnboardingError(error.code, error.message, error.action, {
-          cause: error.cause instanceof Error ? error.cause : undefined,
-          context: {
-            ...error.context,
-            operation: 'patient_with_diagnoses_lookup',
-            combinedLookup: true,
-          },
+          operation: 'patient_with_diagnoses_lookup',
+          combinedLookup: true,
+          originalError: error.message,
         });
       }
 
@@ -123,7 +136,7 @@ export function createPccAdapter() {
     }
   };
 
-  const getPatients: GetPatientsPort = async (
+  const getPatients: GetPatients = async (
     orgUuid: string,
     facilityId?: number,
     page = 1,
@@ -182,17 +195,20 @@ export function createPccAdapter() {
 }
 
 /**
- * Mock adapter for testing - provides same interface as PCC adapter
+ * Mock EHR adapter for testing and development
+ *
+ * Provides same interface as real EHR adapter but returns hardcoded data.
+ * Useful for development and unit testing when PCC is not available.
  */
-export function createMockPccAdapter() {
-  const getPatient: GetPatientPort = async (
+export function createMockEhrAdapter() {
+  const getPatient: GetPatient = async (
     _orgUuid: string,
     patientId: number
   ) => {
     return createPatient(patientId, 'John', 'Doe', new Date('1960-05-15'), 1);
   };
 
-  const getPatientDiagnoses: GetPatientDiagnosesPort = async (
+  const getPatientDiagnoses: GetPatientDiagnoses = async (
     _orgUuid: string,
     _patientId: number
   ) => {
@@ -214,7 +230,7 @@ export function createMockPccAdapter() {
     ];
   };
 
-  const getPatientWithDiagnoses: GetPatientWithDiagnosesPort = async (
+  const getPatientWithDiagnoses: GetPatientWithDiagnoses = async (
     orgUuid: string,
     patientId: number
   ) => {
@@ -225,7 +241,7 @@ export function createMockPccAdapter() {
     return { patient, diagnoses };
   };
 
-  const getPatients: GetPatientsPort = async (
+  const getPatients: GetPatients = async (
     _orgUuid: string,
     _facilityId?: number,
     _page = 1,
@@ -272,12 +288,19 @@ function mapPccErrorToOnboardingError(
     switch (status) {
       case 404:
         // Patient not found in PCC - this is a business-meaningful error
-        return OnboardingError.patientNotFound(patientId, orgUuid);
+        return OnboardingError.patientNotFound(
+          patientId,
+          orgUuid,
+          error instanceof Error ? error : undefined
+        );
 
       case 401:
       case 403:
         // Authentication/authorization failure - requires admin action
-        return OnboardingError.pccUnauthorized(operation);
+        return OnboardingError.pccUnauthorized(
+          operation,
+          error instanceof Error ? error : undefined
+        );
 
       case 408:
       case 504:
@@ -287,25 +310,46 @@ function mapPccErrorToOnboardingError(
       case 502:
       case 503:
         // Timeout/rate limiting/service unavailable - recoverable
-        return OnboardingError.pccUnavailable(operation);
+        return OnboardingError.pccUnavailable(
+          operation,
+          error instanceof Error ? error : undefined
+        );
 
       default:
         // Other HTTP errors - treat as PCC unavailable for now
-        return OnboardingError.pccUnavailable(operation);
+        return OnboardingError.pccUnavailable(
+          operation,
+          error instanceof Error ? error : undefined
+        );
     }
   }
 
   // Network errors (ENOTFOUND, ECONNREFUSED, etc.)
   if (isNetworkError(error)) {
-    return OnboardingError.pccUnavailable(operation);
+    return OnboardingError.pccUnavailable(
+      operation,
+      error instanceof Error ? error : undefined
+    );
   }
 
-  // Fallback - treat unknown errors as PCC unavailable
-  return OnboardingError.pccUnavailable(operation);
+  // Auth token errors
+  if (isAuthError(error)) {
+    return OnboardingError.pccUnauthorized(
+      operation,
+      error instanceof Error ? error : undefined
+    );
+  }
+
+  // Unknown error type - default to PCC unavailable
+  return OnboardingError.pccUnavailable(
+    operation,
+    error instanceof Error ? error : undefined
+  );
 }
 
 /**
- * Type guards and utility functions for error classification
+ * Helper functions for error type detection
+ * These handle the technical details of identifying different error types
  */
 function isHttpError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false;
@@ -368,6 +412,17 @@ function isNetworkError(error: unknown): boolean {
   const lowerMessage = message.toLowerCase();
 
   return /network|timeout|connection|enotfound|econnrefused|etimedout|econnreset/.test(
+    lowerMessage
+  );
+}
+
+function isAuthError(error: unknown): boolean {
+  if (!error) return false;
+
+  const message = error instanceof Error ? error.message : String(error);
+  const lowerMessage = message.toLowerCase();
+
+  return /unauthorized|authentication|auth|token|credentials/.test(
     lowerMessage
   );
 }
