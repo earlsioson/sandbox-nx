@@ -12,12 +12,13 @@ The NIV (Non-Invasive Ventilator) onboarding system implements **Hexagonal Archi
 - **Dependency inversion** - Domain defines contracts, infrastructure implements them
 - **Primary ports** - Interfaces the domain exposes to external systems
 - **Secondary ports** - Interfaces the domain needs from external systems
+- **Perfect symmetry** - Primary and secondary sides follow identical patterns
 
 ### 2. Domain-Driven Design (DDD)
 
 - **Ubiquitous language** - Healthcare terminology throughout (qualifications, EHR operations, clinical assessments)
 - **Bounded context** - Onboarding workflow is clearly separated from other healthcare domains
-- **Functional DDD** - Factory functions instead of classes (`createPatient`, `createQualifications`)
+- **Functional DDD** - Factory functions instead of classes (`createPatient`, `createQualifications`, `createOnboardingOperations`)
 
 ### 3. Error Handling Strategy
 
@@ -35,9 +36,11 @@ apps/backend/niv/src/app/
 │       ├── types.ts              # PCC API response types
 │       └── index.ts              # Clean exports
 └── onboarding/                   # Onboarding Bounded Context
-    ├── onboarding.controller.ts  # Primary Adapter (HTTP → Domain)
-    ├── onboarding.service.ts     # Thin NestJS Adapter
+    ├── onboarding.controller.ts  # HTTP Adapter (NestJS wrapper)
+    ├── onboarding.service.ts     # NestJS Adapter (logging & DI)
     ├── onboarding.module.ts      # DI Configuration
+    ├── onboarding-operations.ts  # Primary Ports (Use Case Interfaces)
+    ├── onboarding.ts             # Primary Adapter (Framework-agnostic)
     ├── qualifications.ts         # Domain Service (Business Logic)
     ├── ehr-operations.ts         # Secondary Ports (Repository Interfaces)
     ├── ehr.ts                    # Secondary Adapter (EHR Implementation)
@@ -52,7 +55,7 @@ apps/backend/niv/src/app/
 
 **HTTP Controller** (`onboarding.controller.ts`)
 
-- **Role**: Primary Adapter (Hexagonal Architecture)
+- **Role**: HTTP Infrastructure Adapter
 - **Responsibilities**:
   - HTTP request/response handling
   - Input validation and sanitization
@@ -62,12 +65,31 @@ apps/backend/niv/src/app/
 
 **NestJS Service** (`onboarding.service.ts`)
 
-- **Role**: Thin Application Service Adapter
+- **Role**: NestJS Framework Adapter
 - **Responsibilities**:
-  - NestJS dependency injection
+  - NestJS dependency injection and lifecycle
   - Framework-specific logging and context
-  - Delegates all business logic to domain
+  - Thin wrapper around primary adapter
+- **Dependencies**: → `onboarding.ts` (primary adapter)
+
+**Primary Adapter** (`onboarding.ts`)
+
+- **Role**: Primary Adapter (Hexagonal Architecture) / Application Service (DDD)
+- **Responsibilities**:
+  - Framework-agnostic business operation coordination
+  - Implements primary port contracts
+  - Delegates to domain services
+  - Unit testable without framework dependencies
 - **Dependencies**: → `qualifications.ts` (domain)
+
+**Primary Ports** (`onboarding-operations.ts`)
+
+- **Role**: Primary Ports (Hexagonal Architecture) / Use Case Interfaces (DDD)
+- **Responsibilities**:
+  - Define contracts for operations the domain exposes
+  - Business-friendly operation signatures
+  - Framework-agnostic interfaces
+- **Consumed by**: HTTP adapters and other external systems
 
 ### 2. Domain Layer (Core)
 
@@ -118,6 +140,24 @@ apps/backend/niv/src/app/
   - HTTP request/response handling
   - Rate limiting and retries
 
+## Hexagonal Symmetry
+
+The architecture achieves **perfect symmetry** between primary and secondary sides:
+
+**Secondary Side (Outbound):**
+
+```
+Domain → ehr-operations.ts → ehr.ts → pcc/
+(Core)   (Secondary Ports)  (Adapter) (Infrastructure)
+```
+
+**Primary Side (Inbound):**
+
+```
+controller.ts → service.ts → onboarding.ts → onboarding-operations.ts ← Domain
+(Infrastructure) (NestJS)   (Adapter)      (Primary Ports)         (Core)
+```
+
 ## Functional DDD Pattern
 
 The system follows a **functional DDD approach** throughout:
@@ -136,6 +176,7 @@ const diagnosis = createDiagnosis(
 // Factory functions for services
 const ehrAdapter = createEhrAdapter();
 const qualifications = createQualifications(ehrOps, mockEhrOps);
+const onboardingOps = createOnboardingOperations();
 
 // Pure functions for business logic
 const clinicalQualifications = getClinicalQualifications(diagnoses);
@@ -161,11 +202,11 @@ const isEligible = Object.values(clinicalQualifications).some(Boolean);
 ### Error Flow
 
 ```
-PCC HTTP Error → EHR Adapter → Domain Error → Service (bubbles) → Controller → HTTP Response
-      ↓              ↓              ↓              ↓              ↓              ↓
-   504 timeout → pccUnavailable → PCC_UNAVAILABLE → (bubbles) → 503 + retry → Client
-   404 patient → patientNotFound → PATIENT_NOT_FOUND → (bubbles) → 404 + stop → Client
-   404 diagnosis → return [] → success → success → 200 + data → Client
+PCC HTTP Error → EHR Adapter → Domain Error → Primary Adapter → NestJS Service → Controller → HTTP Response
+      ↓              ↓              ↓              ↓              ↓              ↓              ↓
+   504 timeout → pccUnavailable → PCC_UNAVAILABLE → (bubbles) → (bubbles) → 503 + retry → Client
+   404 patient → patientNotFound → PATIENT_NOT_FOUND → (bubbles) → (bubbles) → 404 + stop → Client
+   404 diagnosis → return [] → success → success → success → 200 + data → Client
 ```
 
 ### Action-Based HTTP Mapping
@@ -181,9 +222,11 @@ The architecture achieves proper **dependency inversion**:
 ```
 HTTP Request
     ↓
-Primary Adapter (Controller)
+HTTP Controller (Infrastructure)
     ↓
-Application Service (NestJS Adapter)
+NestJS Service (Framework Adapter)
+    ↓
+Primary Adapter (Framework-agnostic) ←── implements ──→ Primary Ports (Contracts)
     ↓
 Domain Service (Business Logic) ←── depends on ──→ Secondary Ports (Contracts)
                                                             ↑
@@ -200,8 +243,9 @@ Domain Service (Business Logic) ←── depends on ──→ Secondary Ports (
 
 ### Framework-Agnostic Testing
 
-- **Domain Service** (`qualifications.ts`): Pure unit tests without NestJS
-- **Business Logic**: Test clinical qualifications without infrastructure
+- **Primary Adapter** (`onboarding.ts`): Pure unit tests without NestJS
+- **Domain Service** (`qualifications.ts`): Pure unit tests without infrastructure
+- **Business Logic**: Test clinical qualifications without framework dependencies
 - **Error Handling**: Test domain error classification independently
 
 ### Integration Testing
@@ -220,7 +264,7 @@ Domain Service (Business Logic) ←── depends on ──→ Secondary Ports (
 
 ### 1. Framework Independence
 
-- **Domain service** can be unit tested without NestJS setup
+- **Primary adapter** can be unit tested without NestJS setup
 - **Business logic** is portable to other frameworks (Express, Fastify, etc.)
 - **EHR integration** can be swapped (Epic, Cerner) without domain changes
 
@@ -238,6 +282,7 @@ Domain Service (Business Logic) ←── depends on ──→ Secondary Ports (
 
 ### 4. Maintainability
 
+- **Perfect symmetry** between primary and secondary sides
 - **Clear separation** of concerns across layers
 - **Dependency inversion** enables easy mocking and testing
 - **Functional approach** reduces complexity and side effects
@@ -261,6 +306,6 @@ Domain Service (Business Logic) ←── depends on ──→ Secondary Ports (
 
 1. Create new domain services following same pattern
 2. Reuse existing EHR operations and adapters
-3. Add new controllers for different HTTP interfaces
+3. Add new primary ports and adapters for different interfaces
 
 This architecture provides a solid foundation for healthcare software that prioritizes patient safety, regulatory compliance, and maintainable business logic.

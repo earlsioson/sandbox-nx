@@ -1,4 +1,4 @@
-title: "NIV Hexagonal Architecture - Implemented" {
+title: "NIV Hexagonal Architecture - Perfect Symmetry Achieved" {
   near: top-center
 }
 
@@ -6,31 +6,44 @@ title: "NIV Hexagonal Architecture - Implemented" {
 client: Frontend/Client
 pcc: PointClickCare EHR
 
-# Hexagonal Architecture - Current Implementation
+# Primary Side (Inbound) - Perfect Hexagonal Architecture
 controller: HTTP Controller {
-  desc: "onboarding.controller.ts (Primary Adapter)"
+  desc: "onboarding.controller.ts (HTTP Infrastructure)"
   note: "Maps HTTP ↔ Domain, Error handling"
 }
 
 service: NestJS Service {
-  desc: "onboarding.service.ts (Thin Adapter)"
-  note: "Framework concerns only"
+  desc: "onboarding.service.ts (NestJS Framework Adapter)"
+  note: "Logging, DI, Framework concerns"
 }
 
+primary_adapter: Primary Adapter {
+  desc: "onboarding.ts (Framework-agnostic)"
+  note: "Business operation coordination"
+}
+
+primary_ports: Primary Ports {
+  shape: oval
+  desc: "onboarding-operations.ts (Use Case Interfaces)"
+  note: "GetPatientWithQualifications, TestPccConnection, etc."
+}
+
+# Domain Core (Hexagon Center)
 domain: Domain Service {
   shape: hexagon
   desc: "qualifications.ts (Pure Business Logic)"
   note: "Framework-agnostic, Unit testable"
 }
 
-contracts: EHR Operations {
+# Secondary Side (Outbound) - Perfect Hexagonal Architecture
+secondary_ports: Secondary Ports {
   shape: oval
-  desc: "ehr-operations.ts (Secondary Ports)"
+  desc: "ehr-operations.ts (Repository Interfaces)"
   note: "GetPatient, GetPatientDiagnoses, etc."
 }
 
-adapter: EHR Adapter {
-  desc: "ehr.ts (Secondary Adapter)"
+secondary_adapter: Secondary Adapter {
+  desc: "ehr.ts (EHR Implementation)"
   note: "PCC implementation, Error mapping"
 }
 
@@ -47,27 +60,41 @@ pcc_client: PCC Client {
   note: "mTLS, Token caching, Rate limiting"
 }
 
-# Primary Flow: Client → Domain → EHR
+# Primary Flow: Client → Domain → EHR (Now with perfect symmetry)
 client -> controller: "1. HTTP Request"
-controller -> service: "2. NestJS concerns"
-service -> domain: "3. Business operation"
-domain -> contracts: "4. Need EHR data"
-contracts -> adapter: "5. Implementation"
-adapter -> pcc_client: "6. HTTP call"
-pcc_client -> pcc: "7. mTLS API"
+controller -> service: "2. NestJS logging & DI"
+service -> primary_adapter: "3. Framework-agnostic ops"
+primary_adapter -> domain: "4. Business operation"
+domain -> secondary_ports: "5. Need EHR data"
+secondary_ports -> secondary_adapter: "6. Implementation"
+secondary_adapter -> pcc_client: "7. HTTP call"
+pcc_client -> pcc: "8. mTLS API"
 
-# Response flow back
+# Response flow back (Perfect symmetry)
 pcc -> pcc_client: "PCC JSON"
-pcc_client -> adapter: "HTTP response"
-adapter -> contracts: "Domain objects"
-contracts -> domain: "Patient + Diagnoses"
-domain -> service: "Assessment result"
-service -> controller: "Business outcome"
+pcc_client -> secondary_adapter: "HTTP response"
+secondary_adapter -> secondary_ports: "Domain objects"
+secondary_ports -> domain: "Patient + Diagnoses"
+domain -> primary_adapter: "Assessment result"
+primary_adapter -> service: "Business outcome"
+service -> controller: "NestJS response"
 controller -> client: "HTTP response"
 
-# Domain Object Dependencies
+# Hexagonal Architecture Dependencies
+primary_adapter -> primary_ports: "implements"
+secondary_adapter -> secondary_ports: "implements"
 domain -> entities: "Uses"
-adapter -> entities: "Creates"
+secondary_adapter -> entities: "Creates"
+
+# Perfect Symmetry Annotation
+symmetry: "Perfect Hexagonal Symmetry" {
+  near: top-left
+
+  primary_side: "Primary (Inbound): controller → service → primary_adapter → primary_ports"
+  secondary_side: "Secondary (Outbound): secondary_ports → secondary_adapter → pcc_client"
+  core: "Domain Service (Business Logic) at center"
+  pattern: "Same *-operations.ts → *.ts pattern on both sides"
+}
 
 # Error Handling Flow - Infrastructure vs Business
 pcc_error: "Infrastructure Error" {
@@ -94,15 +121,19 @@ pcc -> pcc_error: {
   label: "API failure"
   style.stroke-dash: 5
 }
-pcc_error -> adapter: {
+pcc_error -> secondary_adapter: {
   label: "catch & map"
   style.stroke-dash: 5
 }
-adapter -> domain_error: {
+secondary_adapter -> domain_error: {
   label: "mapPccErrorToOnboardingError()"
   style.stroke-dash: 5
 }
-domain_error -> service: {
+domain_error -> primary_adapter: {
+  label: "bubbles up (not caught)"
+  style.stroke-dash: 5
+}
+primary_adapter -> service: {
   label: "bubbles up (not caught)"
   style.stroke-dash: 5
 }
@@ -120,7 +151,7 @@ http_error -> client: {
 }
 
 # Business outcome flow (not errors)
-adapter -> business_outcome: {
+secondary_adapter -> business_outcome: {
   label: "404 diagnoses → []"
   style.stroke-dash: 3
 }
@@ -128,7 +159,11 @@ business_outcome -> domain: {
   label: "success with data"
   style.stroke-dash: 3
 }
-domain -> controller: {
+domain -> primary_adapter: {
+  label: "assessment result"
+  style.stroke-dash: 3
+}
+primary_adapter -> controller: {
   label: "isNivEligible: false"
   style.stroke-dash: 3
 }
@@ -141,21 +176,25 @@ controller -> client: {
 benefits: "Architecture Benefits" {
   near: bottom-left
 
-  framework_agnostic: "✅ Framework-agnostic domain"
+  framework_agnostic: "✅ Framework-agnostic primary adapter"
   unit_testable: "✅ Unit testable business logic"
+  perfect_symmetry: "✅ Primary/Secondary symmetry"
   error_strategy: "✅ Infrastructure vs Business errors"
   healthcare_language: "✅ Healthcare ubiquitous language"
 }
 
-# Current Implementation Status
+# Implementation Status
 implementation: "Implementation Status" {
   near: bottom-right
 
-  primary_ports: "✅ Proper primary port interface"
+  primary_ports: "✅ Primary port interfaces"
+  primary_adapter: "✅ Framework-agnostic primary adapter"
   secondary_ports: "✅ EHR operation contracts"
+  secondary_adapter: "✅ PCC implementation"
   domain_service: "✅ Pure domain service"
   error_classification: "✅ Action-based error handling"
   functional_ddd: "✅ Functional DDD pattern"
+  perfect_hexagon: "✅ Perfect hexagonal architecture"
 }
 
 # Key Patterns
@@ -167,7 +206,9 @@ patterns: "Key Patterns Used" {
   functional: "Functional Programming"
   ubiquitous: "Healthcare Ubiquitous Language"
   error_actions: "Error Action Classification"
+  ports_adapters: "Ports & Adapters Pattern"
+  dependency_inversion: "Dependency Inversion Principle"
 }
 
-# Position elements for clarity
-client -> controller -> service -> domain -> contracts -> adapter -> pcc_client -> pcc
+# Position elements for clarity in hexagonal pattern
+client -> controller -> service -> primary_adapter -> domain -> secondary_ports -> secondary_adapter -> pcc_client -> pcc
